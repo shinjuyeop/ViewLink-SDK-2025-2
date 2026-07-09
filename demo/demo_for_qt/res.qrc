@@ -1,0 +1,7 @@
+<RCC>
+    <qresource prefix="/image">
+        <file>circle_empty_48x48.png</file>
+        <file>circle_selected_32x32.png</file>
+        <file>RecordingFlash_32x32.png</file>
+    </qresource>
+</RCC>

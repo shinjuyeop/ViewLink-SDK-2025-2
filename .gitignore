@@ -1,0 +1,43 @@
+# --- C++ / Qt 빌드 산출물 제외 ---
+Makefile
+Makefile.Debug
+Makefile.Release
+object_script.*
+.qmake.stash
+*.o
+*.obj
+*.o.d
+moc_*.cpp
+qrc_*.cpp
+ui_*.h
+
+# --- Qt Creator 사용자 설정 제외 ---
+*.pro.user
+*.pro.user.*
+
+# --- Visual Studio 임시 파일 제외 (demo_for_windows 프로젝트용) ---
+.vs/
+x64/
+Debug/
+Release/
+*.suo
+*.user
+*.db
+*.opendb
+
+# --- 빌드 완료된 윈도우 실행 파일 및 리눅스 바이너리 제외 ---
+**/demo_for_qt/bin/win64/demo_for_qt.exe
+**/demo_for_qt/bin/win32/demo_for_qt.exe
+**/demo_for_qt/bin/linux-x86_64/demo_for_qt
+**/demo_for_qt/bin/linux-aarch64/demo_for_qt
+/demo/demo_for_qt/bin/
+/demo/demo_for_qt/records/
+/demo/demo_for_qt/VLKLog/
+
+# --- 대용량 테스트 도구 제외 ---
+**/test_rtsp/mediamtx
+**/test_rtsp/mediamtx_v1.19.2_linux_amd64.tar.gz
+
+# --- VS Code 설정 보존 ---
+.vscode/*
+!.vscode/tasks.json

@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<options>
+	<model name="F" id="0x01">
+		<capability name="VisibleZoomLens">1</capability> <!--visible light zoom-->
+		<capability name="VisiblePrimeLens">0</capability> <!--Visible light fixed focus-->
+		<capability name="IRZoomLens">0</capability><!--Infrared zoom-->
+		<capability name="IRPrimeLens">0</capability><!--Infrared fixed focus-->
+		<capability name="IRDigitalZoom">0</capability><!--Infrared fixed focus electronic magnification-->
+		<capability name="IRColor_WhiteHot">0</capability><!--红外颜色WhiteHot-->
+		<capability name="IRColor_BlackHot">0</capability><!--红外颜色BlackHot-->
+		<capability name="IRColor_PseudoHot">0</capability><!--红外颜色PseudoHot-->
+		<capability name="Fusion">0</capability>
+		<capability name="Laser">0</capability><!--radar-->
+		<capability name="Track">0</capability><!--track-->
+		<capability name="Pic/RecMode">1</capability><!--Switching between video and photo modes-->
+		<capability name="Defog">0</capability><!--Remove fog-->
+	</model>
+
+	<model name="T" id="0x02">
+		<capability name="VisibleZoomLens">1</capability> <!--visible light zoom-->
+		<capability name="VisiblePrimeLens">0</capability> <!--Visible light fixed focus-->
+		<capability name="IRZoomLens">0</capability><!--Infrared zoom-->
+		<capability name="IRPrimeLens">0</capability><!--Infrared fixed focus-->
+		<capability name="IRDigitalZoom">0</capability><!--Infrared fixed focus electronic magnification-->
+		<capability name="IRColor_WhiteHot">0</capability><!--红外颜色WhiteHot-->
+		<capability name="IRColor_BlackHot">0</capability><!--红外颜色BlackHot-->
+		<capability name="IRColor_PseudoHot">0</capability><!--红外颜色PseudoHot-->
+		<capability name="Fusion">0</capability>
+		<capability name="Laser">0</capability><!--radar-->
+		<capability name="Track">1</capability><!--track-->
+		<capability name="Pic/RecMode">0</capability><!--Switching between video and photo modes-->
+		<capability name="Defog">1</capability><!--Remove fog-->
+	</model>
+
+	<model name="TL" id="0x03">
+		<capability name="VisibleZoomLens">1</capability> <!--visible light zoom-->
+		<capability name="VisiblePrimeLens">0</capability> <!--Visible light fixed focus-->
+		<capability name="IRZoomLens">0</capability><!--Infrared zoom-->
+		<capability name="IRPrimeLens">0</capability><!--Infrared fixed focus-->
+		<capability name="IRDigitalZoom">0</capability><!--Infrared fixed focus electronic magnification-->
+		<capability name="IRColor_WhiteHot">0</capability><!--红外颜色WhiteHot-->
+		<capability name="IRColor_BlackHot">0</capability><!--红外颜色BlackHot-->
+		<capability name="IRColor_PseudoHot">0</capability><!--红外颜色PseudoHot-->
+		<capability name="Fusion">0</capability>
+		<capability name="Laser">1</capability><!--radar-->
+		<capability name="Track">1</capability><!--track-->
+		<capability name="Pic/RecMode">0</capability><!--Switching between video and photo modes-->
+		<capability name="Defog">1</capability><!--Remove fog-->
+	</model>
+
+	<model name="TIR" id="0x04">
+		<capability name="VisibleZoomLens">1</capability> <!--visible light zoom-->
+		<capability name="VisiblePrimeLens">0</capability> <!--Visible light fixed focus-->
+		<capability name="IRZoomLens">0</capability><!--Infrared zoom-->
+		<capability name="IRPrimeLens">1</capability><!--Infrared fixed focus-->
+		<capability name="IRDigitalZoom">1</capability><!--Infrared fixed focus electronic magnification-->
+		<capability name="IRColor_WhiteHot">1</capability><!--红外颜色WhiteHot-->
+		<capability name="IRColor_BlackHot">1</capability><!--红外颜色BlackHot-->
+		<capability name="IRColor_PseudoHot">1</capability><!--红外颜色PseudoHot-->
+		<capability name="Fusion">0</capability>
+		<capability name="Laser">0</capability><!--radar-->
+		<capability name="Track">1</capability><!--track-->
+		<capability name="Pic/RecMode">0</capability><!--Switching between video and photo modes-->
+		<capability name="Defog">1</capability><!--Remove fog-->
+	</model>
+	<model name="TIRM" id="0x05">
+		<capability name="VisibleZoomLens">1</capability> <!--visible light zoom-->
+		<capability name="VisiblePrimeLens">0</capability> <!--Visible light fixed focus-->
+		<capability name="IRZoomLens">0</capability><!--Infrared zoom-->
+		<capability name="IRPrimeLens">1</capability><!--Infrared fixed focus-->
+		<capability name="IRDigitalZoom">1</capability><!--Infrared fixed focus electronic magnification-->
+		<capability name="IRColor_WhiteHot">1</capability><!--红外颜色WhiteHot-->
+		<capability name="IRColor_BlackHot">1</capability><!--红外颜色BlackHot-->
+		<capability name="IRColor_PseudoHot">1</capability><!--红外颜色PseudoHot-->
+		<capability name="Fusion">0</capability>
+		<capability name="Laser">0</capability><!--radar-->
+		<capability name="Track">1</capability><!--track-->
+		<capability name="Pic/RecMode">0</capability><!--Switching between video and photo modes-->
+		<capability name="Defog">1</capability><!--Remove fog-->
+	</model>
+	<model name="TM" id="0x06">
+		<capability name="VisibleZoomLens">1</capability> <!--visible light zoom-->
+		<capability name="VisiblePrimeLens">0</capability> <!--Visible light fixed focus-->
+		<capability name="IRZoomLens">0</capability><!--Infrared zoom-->
+		<capability name="IRPrimeLens">0</capability><!--Infrared fixed focus-->
+		<capability name="IRDigitalZoom">0</capability><!--Infrared fixed focus electronic magnification-->
+		<capability name="IRColor_WhiteHot">0</capability><!--红外颜色WhiteHot-->
+		<capability name="IRColor_BlackHot">0</capability><!--红外颜色BlackHot-->
+		<capability name="IRColor_PseudoHot">0</capability><!--红外颜色PseudoHot-->
+		<capability name="Fusion">0</capability>
+		<capability name="Laser">0</capability><!--radar-->
+		<capability name="Track">1</capability><!--track-->
+		<capability name="Pic/RecMode">0</capability><!--Switching between video and photo modes-->
+		<capability name="Defog">1</capability><!--Remove fog-->
+	</model>
+	<model name="Z-fusionS" id="0x07">
+		<capability name="VisibleZoomLens">0</capability> <!--visible light zoom-->
+		<capability name="VisiblePrimeLens">1</capability> <!--Visible light fixed focus-->
+		<capability name="IRZoomLens">0</capability><!--Infrared zoom-->
+		<capability name="IRPrimeLens">1</capability><!--Infrared fixed focus-->
+		<capability name="IRDigitalZoom">0</capability><!--Infrared fixed focus electronic magnification-->
+		<capability name="IRColor_WhiteHot">1</capability><!--红外颜色WhiteHot-->
+		<capability name="IRColor_BlackHot">1</capability><!--红外颜色BlackHot-->
+		<capability name="IRColor_PseudoHot">1</capability><!--红外颜色PseudoHot-->
+		<capability name="Fusion">1</capability>
+		<capability name="Laser">0</capability><!--radar-->
+		<capability name="Track">1</capability><!--track-->
+		<capability name="Pic/RecMode">0</capability><!--Switching between video and photo modes-->
+		<capability name="Defog">0</capability><!--Remove fog-->
+	</model>
+	<model name="Z6KA7" id="0x08">
+		<capability name="VisibleZoomLens">1</capability> <!--visible light zoom-->
+		<capability name="VisiblePrimeLens">0</capability> <!--Visible light fixed focus-->
+		<capability name="IRZoomLens">0</capability><!--Infrared zoom-->
+		<capability name="IRPrimeLens">0</capability><!--Infrared fixed focus-->
+		<capability name="IRDigitalZoom">0</capability><!--Infrared fixed focus electronic magnification-->
+		<capability name="IRColor_WhiteHot">0</capability><!--红外颜色WhiteHot-->
+		<capability name="IRColor_BlackHot">0</capability><!--红外颜色BlackHot-->
+		<capability name="IRColor_PseudoHot">0</capability><!--红外颜色PseudoHot-->
+		<capability name="Fusion">0</capability>
+		<capability name="Laser">0</capability><!--radar-->
+		<capability name="Track">1</capability><!--track-->
+		<capability name="Pic/RecMode">0</capability><!--Switching between video and photo modes-->
+		<capability name="Defog">0</capability><!--Remove fog-->
+	</model>
+	<model name="XIR" id="0x09">
+		<capability name="VisibleZoomLens">1</capability> <!--visible light zoom-->
+		<capability name="VisiblePrimeLens">0</capability> <!--Visible light fixed focus-->
+		<capability name="IRZoomLens">0</capability><!--Infrared zoom-->
+		<capability name="IRPrimeLens">1</capability><!--Infrared fixed focus-->
+		<capability name="IRDigitalZoom">1</capability><!--Infrared fixed focus electronic magnification-->
+		<capability name="IRColor_WhiteHot">1</capability><!--红外颜色WhiteHot-->
+		<capability name="IRColor_BlackHot">1</capability><!--红外颜色BlackHot-->
+		<capability name="IRColor_PseudoHot">1</capability><!--红外颜色PseudoHot-->
+		<capability name="Fusion">0</capability>
+		<capability name="Laser">0</capability><!--radar-->
+		<capability name="Track">0</capability><!--track-->
+		<capability name="Pic/RecMode">0</capability><!--Switching between video and photo modes-->
+		<capability name="Defog">1</capability><!--Remove fog-->
+	</model>
+	<model name="ZIR" id="0x0A">
+		<capability name="VisibleZoomLens">0</capability> <!--visible light zoom-->
+		<capability name="VisiblePrimeLens">0</capability> <!--Visible light fixed focus-->
+		<capability name="IRZoomLens">0</capability><!--Infrared zoom-->
+		<capability name="IRPrimeLens">1</capability><!--Infrared fixed focus-->
+		<capability name="IRDigitalZoom">1</capability><!--Infrared fixed focus electronic magnification-->
+		<capability name="IRColor_WhiteHot">1</capability><!--红外颜色WhiteHot-->
+		<capability name="IRColor_BlackHot">1</capability><!--红外颜色BlackHot-->
+		<capability name="IRColor_PseudoHot">1</capability><!--红外颜色PseudoHot-->
+		<capability name="Fusion">0</capability>
+		<capability name="Laser">0</capability><!--radar-->
+		<capability name="Track">1</capability><!--track-->
+		<capability name="Pic/RecMode">0</capability><!--Switching between video and photo modes-->
+		<capability name="Defog">0</capability><!--Remove fog-->
+	</model>
+	<model name="QIR19" id="0x0B">
+		<capability name="VisibleZoomLens">0</capability> <!--visible light zoom-->
+		<capability name="VisiblePrimeLens">0</capability> <!--Visible light fixed focus-->
+		<capability name="IRZoomLens">0</capability><!--Infrared zoom-->
+		<capability name="IRPrimeLens">1</capability><!--Infrared fixed focus-->
+		<capability name="IRDigitalZoom">1</capability><!--Infrared fixed focus electronic magnification-->
+		<capability name="IRColor_WhiteHot">1</capability><!--红外颜色WhiteHot-->
+		<capability name="IRColor_BlackHot">1</capability><!--红外颜色BlackHot-->
+		<capability name="IRColor_PseudoHot">1</capability><!--红外颜色PseudoHot-->
+		<capability name="Fusion">0</capability>
+		<capability name="Laser">0</capability><!--radar-->
+		<capability name="Track">0</capability><!--track-->
+		<capability name="Pic/RecMode">0</capability><!--Switching between video and photo modes-->
+		<capability name="Defog">0</capability><!--Remove fog-->
+	</model>
+	<model name="Z36N" id="0x0C">
+		<capability name="VisibleZoomLens">1</capability> <!--visible light zoom-->
+		<capability name="VisiblePrimeLens">0</capability> <!--Visible light fixed focus-->
+		<capability name="IRZoomLens">0</capability><!--Infrared zoom-->
+		<capability name="IRPrimeLens">0</capability><!--Infrared fixed focus-->
+		<capability name="IRDigitalZoom">0</capability><!--Infrared fixed focus electronic magnification-->
+		<capability name="IRColor_WhiteHot">0</capability><!--红外颜色WhiteHot-->
+		<capability name="IRColor_BlackHot">0</capability><!--红外颜色BlackHot-->
+		<capability name="IRColor_PseudoHot">0</capability><!--红外颜色PseudoHot-->
+		<capability name="Fusion">0</capability>
+		<capability name="Laser">0</capability><!--radar-->
+		<capability name="Track">0</capability><!--track-->
+		<capability name="Pic/RecMode">0</capability><!--Switching between video and photo modes-->
+		<capability name="Defog">1</capability><!--Remove fog-->
+	</model>
+	<model name="Z-fusion" id="0x0D">
+		<capability name="VisibleZoomLens">0</capability> <!--visible light zoom-->
+		<capability name="VisiblePrimeLens">1</capability> <!--Visible light fixed focus-->
+		<capability name="IRZoomLens">0</capability><!--Infrared zoom-->
+		<capability name="IRPrimeLens">1</capability><!--Infrared fixed focus-->
+		<capability name="IRDigitalZoom">1</capability><!--Infrared fixed focus electronic magnification-->
+		<capability name="IRColor_WhiteHot">1</capability><!--红外颜色WhiteHot-->
+		<capability name="IRColor_BlackHot">1</capability><!--红外颜色BlackHot-->
+		<capability name="IRColor_PseudoHot">1</capability><!--红外颜色PseudoHot-->
+		<capability name="Fusion">1</capability>
+		<capability name="Laser">0</capability><!--radar-->
+		<capability name="Track">0</capability><!--track-->
+		<capability name="Pic/RecMode">0</capability><!--Switching between video and photo modes-->
+		<capability name="Defog">0</capability><!--Remove fog-->
+	</model>
+	<model name="Q40TIR" id="0x0E">
+		<capability name="VisibleZoomLens">1</capability> <!--visible light zoom-->
+		<capability name="VisiblePrimeLens">0</capability> <!--Visible light fixed focus-->
+		<capability name="IRZoomLens">0</capability><!--Infrared zoom-->
+		<capability name="IRPrimeLens">1</capability><!--Infrared fixed focus-->
+		<capability name="IRDigitalZoom">1</capability><!--Infrared fixed focus electronic magnification-->
+		<capability name="IRColor_WhiteHot">1</capability><!--红外颜色WhiteHot-->
+		<capability name="IRColor_BlackHot">1</capability><!--红外颜色BlackHot-->
+		<capability name="IRColor_PseudoHot">1</capability><!--红外颜色PseudoHot-->
+		<capability name="Fusion">0</capability>
+		<capability name="Laser">0</capability><!--radar-->
+		<capability name="Track">1</capability><!--track-->
+		<capability name="Pic/RecMode">1</capability><!--Switching between video and photo modes-->
+		<capability name="Defog">1</capability><!--Remove fog-->
+	</model>
+	<model name="Z30UX" id="0x0F">
+		<capability name="VisibleZoomLens">1</capability> <!--visible light zoom-->
+		<capability name="VisiblePrimeLens">1</capability> <!--Visible light fixed focus-->
+		<capability name="IRZoomLens">0</capability><!--Infrared zoom-->
+		<capability name="IRPrimeLens">0</capability><!--Infrared fixed focus-->
+		<capability name="IRDigitalZoom">0</capability><!--Infrared fixed focus electronic magnification-->
+		<capability name="IRColor_WhiteHot">0</capability><!--红外颜色WhiteHot-->
+		<capability name="IRColor_BlackHot">0</capability><!--红外颜色BlackHot-->
+		<capability name="IRColor_PseudoHot">0</capability><!--红外颜色PseudoHot-->
+		<capability name="Fusion">0</capability>
+		<capability name="Laser">0</capability><!--radar-->
+		<capability name="Track">0</capability><!--track-->
+		<capability name="Pic/RecMode">0</capability><!--Switching between video and photo modes-->
+		<capability name="Defog">0</capability><!--Remove fog-->
+	</model>
+</options>

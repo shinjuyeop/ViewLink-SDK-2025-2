@@ -1,0 +1,102 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Base application theme. -->
+    <style name="AppTheme" parent="Theme.AppCompat.Light.DarkActionBar">
+        <!-- Customize your theme here. -->
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
+        <item name="colorAccent">@color/colorAccent</item>
+        <item name="android:typeface">serif</item>
+    </style>
+
+
+    <style name="FloatWindowAnimation">
+        <item name="android:windowEnterAnimation">@anim/anim_float_window_enter</item>
+        <item name="android:windowExitAnimation">@anim/anim_float_window_exit</item>
+    </style>
+
+    <style name="AppTheme.NoActionBar">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+    </style>
+
+
+    <!--正在连接对话框6.0-->
+    <style name="ProgressHUD" parent="@android:style/Theme.Dialog">
+        <item name="android:windowFrame">@null</item>
+        <item name="android:windowIsFloating">true</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:windowAnimationStyle">@android:style/Animation.Dialog</item>
+        <item name="android:windowSoftInputMode">stateUnspecified|adjustPan</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowNoTitle">true</item>
+    </style>
+
+
+    <style name="testStylesa">
+        <item name="android:textColor">@color/whitesmoke</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:gravity">center</item>
+    </style>
+
+
+    <style name="testStyles">
+        <item name="android:textColor">@color/whitesmoke</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:gravity">center_horizontal</item>
+    </style>
+
+
+    <style name="testStyle1s" parent="testStyles">
+        <item name="android:layout_weight">1</item>
+        <item name="android:layout_width">85dp</item>
+    </style>
+
+    <style name="editStyle" parent="testStyles">
+        <item name="android:textColor">@color/whitesmoke</item>
+        <item name="android:padding">5dp</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:background">@drawable/text_background</item>
+    </style>
+
+
+
+    <style name="editStyles" parent="testStylesa">
+        <item name="android:textColor">@color/whitesmoke</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:background">@drawable/text_background</item>
+    </style>
+
+    <style name="spinnerStyle" parent="testStyle1">
+        <item name="android:overlapAnchor">false</item>
+        <item name="android:layout_height">match_parent</item>
+        <item name="android:background">@drawable/bg_spinner</item>
+    </style>
+
+    <style name="spinnerStyles" parent="testStyle1s">
+        <item name="android:layout_centerHorizontal">true</item>
+        <item name="android:overlapAnchor">false</item>
+        <item name="android:layout_height">30dp</item>
+        <item name="android:background">@drawable/bg_spinners</item>
+    </style>
+
+
+    <style name="testStyle">
+        <item name="android:textColor">#000000</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+
+    </style>
+
+    <style name="testStyle1" parent="testStyle">
+        <item name="android:layout_weight">1</item>
+        <item name="android:layout_width">match_parent</item>
+    </style>
+</resources>

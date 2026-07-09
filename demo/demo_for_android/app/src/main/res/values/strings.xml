@@ -1,0 +1,36 @@
+<resources>
+    <string name="app_name">ViewLinkSDK</string>
+    <string name="tcp_connected">TCP Gimbal connected</string>
+    <string name="tcp_disconnected">TCP Gimbal disconnected</string>
+    <string name="serial_port_connected">Seiral port connected</string>
+    <string name="serial_port_disconnected">Seiral port disconnected</string>
+    <string name="unknown_conn_status">unknown connection status: </string>
+    <string name="on_connection">Connecting...</string>
+    <string name="OSD_Settings">OSD Settings</string>
+    <string name="Enable_OSD">Enable OSD</string>
+    <string name="Cross">Cross</string>
+    <string name="Pitch_Yaw">Pitch＆Yaw</string>
+    <string name="XYshift">Degree/min/sec</string>
+    <string name="GPS">GPS</string>
+    <string name="Time">Time</string>
+    <string name="VL_MAG">VL-MAG</string>
+    <string name="Ai_Frame">Ai Frame</string>
+    <string name="IR_Dzoom">IR Dzoom</string>
+    <string name="LRF">LRF</string>
+    <string name="TF">TF</string>
+    <string name="GPS_TAG">GPS_TAG</string>
+    <string name="Use_Big_Font">Use Big Font</string>
+    <string name="Time_Input">Time Input</string>
+    <string name="GPS_Input">GPS Input</string>
+    <string name="Pitch_Yaw_Input">Pitch＆Yaw Input</string>
+    <string name="VL_MAG_Inpu">VL-MAG Inpu</string>
+    <string name="Zoom_Times">Zoom Times</string>
+    <string name="FOV">FOV</string>
+    <string name="MGRS">MGRS</string>
+    <string name="Time_Zone">Time Zone</string>
+    <string name="Refresh">Refresh</string>
+    <string name="Save">Save</string>
+    <string name="send">Send</string>
+    <string name="green_font">Green font</string>
+    <string name="white_font">White font</string>
+</resources>

@@ -1,0 +1,30 @@
+<resources>
+
+     <!--定义皮肤的全部属性，例如全局的背景色，全局的字体色等-->
+    <declare-styleable name="skin_attr">
+        <attr name="main_bgs_skin" format="color|reference"></attr>
+        <attr name="button_bgs_skin" format="color|reference"></attr>
+        <attr name="button_text_colors_skin" format="color|reference"></attr>
+        <attr name="text_colors_skin" format="color|reference"></attr>
+        <attr name="text_colors_skin_dark" format="color|reference"></attr>
+        <attr name="radio_text_colors_skin" format="color|reference"></attr>
+        <attr name="line_colors_skin" format="color|reference"></attr>
+        <attr name="button_colors_skin" format="color|reference"></attr>
+    </declare-styleable>
+
+    <!--定义皮肤主题，给皮肤的属性赋值-->
+    <!--白天皮肤-->
+    <style name="AppThemes" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="main_bgs_skin">@color/main_bg</item>
+        <item name="button_bgs_skin">@color/button_bg</item>
+        <item name="button_text_colors_skin">@color/button_text_color</item>
+        <item name="text_colors_skin">@color/text_color</item>
+        <item name="button_colors_skin">@color/text_color</item>
+        <item name="text_colors_skin_dark">@color/text_color</item>
+        <item name="radio_text_colors_skin">@color/line_color</item>
+        <item name="line_colors_skin">@color/line_color</item>
+    </style>
+
+
+
+</resources>

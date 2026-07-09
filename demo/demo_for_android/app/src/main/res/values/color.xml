@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#3F51B5</color>
+    <color name="colorPrimaryDark">#303F9F</color>
+    <color name="colorAccent">#FF4081</color>
+    <color name="color_orange">#FF9800</color>
+    <color name="color_blue">#00BAED</color>
+
+    <color name="login_button_background">#71c297</color>
+    <color name="white_normal">#ffffffff</color>
+    <color name="content_color">#666666</color>
+    <color name="player_theme_color_translucent">#9939C5BB</color>
+    <color name="button_bg">#3988FB</color>
+    <color name="player_theme_color">#39C5BB</color>
+    <color name="player_background_color">#4D000000</color>
+
+
+        <color name="color_vlk_blue">#00A0E6</color>
+        <color name="whitesmoke">#F5F5F5</color><!--烟白色 -->
+        <color name="editcolor">#333</color>
+        <color name="textcolor">#666</color>
+        <color name="bgEditColor">#999</color>
+
+        <color name="gray_play">#FF444444</color>
+        <color name="white">#FFF</color>
+
+
+        <color name="whitse">#00BAED</color>
+
+
+
+        <color name="red">#cc0000</color>
+        <color name="black">#f000</color>
+
+        <color name="grey">#AEC8FF</color>
+        <color name="text_new_tag">#ffffff</color>
+        <color name="blue">#3366cc</color>
+
+
+        <color name="primary_dark_blue">#23354b</color>
+
+
+
+        <color name="main_bg">#FFFFFF</color>
+
+        <color name="button_text_color">#FFFFFF</color>
+        <color name="text_color">#FFFFFF</color>
+
+        <color name="line_color">#FF0000</color>
+
+
+
+        <color name="rsbColorThumbDefault">#FFFFFF</color>
+        <color name="rsbColorThumbBorder">#FFD7D7D7</color>
+
+        <color name="transparent">#0000</color>
+
+        <color name="night_main_bgs_s">#3C3C3C</color>
+        <color name="night_main_bgs_wite">#FFFFFF</color>
+        <color name="night_main_bgs_dark">#000000</color>
+        <color name="green">#44D424</color>
+
+
+        <color name="light_gray">#9c9c9c</color>
+        <color name="main_color">#5CD6A8</color>
+        <color name="picture_tv_all_choose_bg_color_start">#FF28DC9B</color>
+        <color name="picture_tv_all_choose_bg_color_end">#FF19CDCD</color>
+
+        <color name="subject_text_color">#444444</color>
+        <color name="base_text">#3d3838</color>
+        <color name="main_line">#C5C4C4</color>
+        <color name="main_gray">#bbbbc4</color>
+
+        <color name="buttonTextColor">#000000</color>
+
+        <color name="controller_bg_dark">#66000000</color>
+        <color name="controller_bg_light">#00000000</color>
+
+        <color name="activity_myhb_tv_blue">#4EE2CC</color>
+
+        <color name="main_text_color">#999999</color>
+
+
+        <color name="alertdialog_line">#c6c6c6</color>
+
+
+        <color name="actionsheet_blue">#000000</color>
+
+        <color name="rsbColorSeekBarDefault">#c3c3c3</color>
+        <color name="colorRed">#00BAED</color>
+
+
+
+        <color name="purple_200">#FFBB86FC</color>
+        <color name="purple_500">#FF6200EE</color>
+        <color name="purple_700">#FF3700B3</color>
+        <color name="teal_200">#FF6200EE</color>
+        <color name="teal_700">#FF018786</color>
+
+        <color name="switch_track_normals">#4F4F4F</color>
+        <color name="switch_track_selecteds">#23FF00</color>
+        <color name="switch_thumb_normals">#FAFBFA</color>
+        <color name="switch_thumb_selecteds">#FAFBFA</color>
+
+
+
+        <color name="switch_track_normal">#4F4F4F</color>
+        <color name="switch_track_selected">#00B8FF</color>
+        <color name="switch_thumb_normal">#FAFBFA</color>
+        <color name="switch_thumb_selected">#FAFBFA</color>
+
+
+        <color name="switch_custom_track_normal">#E3E3E3</color>
+        <color name="switch_custom_track_selected">#D2BFF7</color>
+        <color name="switch_custom_thumb_normal">#BDBDBD</color>
+        <color name="switch_custom_thumb_selected">#6200EE</color>
+
+
+</resources>

@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    tools:context=".MainActivity">
+
+
+
+    <LinearLayout
+        android:id="@+id/gimbalControl"
+        android:orientation="horizontal"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content">
+
+
+    <Button
+        android:layout_marginLeft="@dimen/dp_100"
+        android:id="@+id/home"
+        android:layout_marginTop="@dimen/dp_50"
+        android:layout_centerHorizontal="true"
+        android:text="Home"
+        android:onClick="Home"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"></Button>
+
+    <Button
+        android:id="@+id/PointCameraHere"
+        android:layout_marginTop="@dimen/dp_50"
+        android:layout_centerHorizontal="true"
+        android:text="PointCameraHere"
+        android:onClick="PointCameraHere"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"></Button>
+
+    <Button
+        android:id="@+id/queryDevConfiguration"
+        android:layout_marginTop="@dimen/dp_50"
+        android:layout_centerHorizontal="true"
+        android:text="QueryDevConfiguration"
+        android:onClick="QueryDevConfiguration"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"></Button>
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_marginTop="@dimen/dp_50"
+        android:layout_below="@+id/gimbalControl"
+        android:orientation="horizontal"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content">
+
+
+        <TextView
+            android:id="@+id/tv_deviceID"
+            android:layout_marginLeft="@dimen/dp_50"
+            android:text="deviceID:"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"></TextView>
+
+
+        <TextView
+            android:id="@+id/tv_versionNO"
+            android:layout_marginLeft="@dimen/dp_10"
+            android:text="versionNO:"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"></TextView>
+
+
+        <TextView
+            android:id="@+id/tv_pitch"
+            android:layout_marginLeft="@dimen/dp_10"
+            android:text="pitch:"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"></TextView>
+
+        <TextView
+            android:id="@+id/tv_yaw"
+            android:layout_marginLeft="@dimen/dp_10"
+            android:text="yaw:"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"></TextView>
+
+
+        <TextView
+            android:id="@+id/tv_zoom"
+            android:layout_marginLeft="@dimen/dp_10"
+            android:text="zoom:"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"></TextView>
+    </LinearLayout>
+
+
+
+    <include layout="@layout/fragment_osd"></include>
+
+</LinearLayout>

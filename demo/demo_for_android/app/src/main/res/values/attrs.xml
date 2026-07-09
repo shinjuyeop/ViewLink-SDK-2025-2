@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--注意这里的name要和自定义View的名称一致，不然在xml布局中无法引用-->
+    <declare-styleable name="VideoView">
+        <attr name="looping" format="boolean"/>
+        <attr name="enableAudioFocus" format="boolean"/>
+        <attr name="screenScaleType" format="dimension">
+            <enum name="type_default" value="0"/>
+            <enum name="type_16_9" value="1"/>
+            <enum name="type_4_3" value="2"/>
+            <enum name="type_match_parent" value="3"/>
+            <enum name="type_original" value="4"/>
+            <enum name="type_center_crop" value="5"/>
+        </attr>
+        <attr name="playerBackgroundColor" format="color"/>
+    </declare-styleable>
+
+</resources>

@@ -1,0 +1,75 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Qt: 1. Run qmake (Release)",
+            "type": "shell",
+            "command": "C:\\Qt\\5.15.2\\mingw81_64\\bin\\qmake.exe",
+            "args": [
+                "demo_for_qt.pro",
+                "-spec",
+                "win32-g++",
+                "CONFIG+=release"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/ViewLink-SDK-2025-2/demo/demo_for_qt",
+                "env": {
+                    "PATH": "C:\\Qt\\5.15.2\\mingw81_64\\bin;C:\\Qt\\Tools\\mingw810_64\\bin;${env:PATH}"
+                }
+            },
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "Qt: 2. Run mingw32-make",
+            "type": "shell",
+            "command": "C:\\Qt\\Tools\\mingw810_64\\bin\\mingw32-make.exe",
+            "args": [
+                "-j4"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/ViewLink-SDK-2025-2/demo/demo_for_qt",
+                "env": {
+                    "PATH": "C:\\Qt\\5.15.2\\mingw81_64\\bin;C:\\Qt\\Tools\\mingw810_64\\bin;${env:PATH}"
+                }
+            },
+            "group": "build",
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "label": "Qt: Full Build (qmake + make)",
+            "type": "shell",
+            "command": "echo",
+            "args": [
+                "Qt build pipeline executed successfully!"
+            ],
+            "dependsOrder": "sequence",
+            "dependsOn": [
+                "Qt: 1. Run qmake (Release)",
+                "Qt: 2. Run mingw32-make"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Qt: Clean Project",
+            "type": "shell",
+            "command": "C:\\Qt\\Tools\\mingw810_64\\bin\\mingw32-make.exe",
+            "args": [
+                "clean"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/ViewLink-SDK-2025-2/demo/demo_for_qt",
+                "env": {
+                    "PATH": "C:\\Qt\\5.15.2\\mingw81_64\\bin;C:\\Qt\\Tools\\mingw810_64\\bin;${env:PATH}"
+                }
+            },
+            "problemMatcher": []
+        }
+    ]
+}
