@@ -53,12 +53,11 @@ void Widget::InitUI()
     ui->cmbIPAddr->addItem("192.168.2.119");
     ui->lineEditPort->setText("2000");
 
-    // initialize network url list
-    ui->cmbNetworkVideoURL->addItem("rtsp://127.0.0.1:8554/live1");
     ui->cmbNetworkVideoURL->addItem("rtsp://192.168.2.119/live1");
+    ui->cmbNetworkVideoURL->addItem("rtsp://127.0.0.1:8554/live1");
 
-    ui->cmbNetworkVideoURLIR->addItem("rtsp://127.0.0.1:8554/live2");
     ui->cmbNetworkVideoURLIR->addItem("rtsp://192.168.2.119/live2");
+    ui->cmbNetworkVideoURLIR->addItem("rtsp://127.0.0.1:8554/live2");
 
     // initialize USB Camera list
     QList<QByteArray> listAvailableCamera = QCamera::availableDevices();
