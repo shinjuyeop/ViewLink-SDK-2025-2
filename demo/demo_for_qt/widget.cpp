@@ -4,6 +4,7 @@
 #include <QtSerialPort/QSerialPort>
 #include <QtSerialPort/QSerialPortInfo>
 #include <QCamera>
+#include <QDateTime>
 #include <QDir>
 #include <QTimer>
 
@@ -11,8 +12,10 @@ Widget::Widget(QWidget *parent) :
     QWidget(parent),
     ui(new Ui::Widget),
     m_bIsRecording(false),
+    m_hasTelemetry(false),
     m_srtIndex(1)
 {
+    memset(&m_latestTelemetry, 0, sizeof(m_latestTelemetry));
     ui->setupUi(this);
     qRegisterMetaType<VLK_DEV_MODEL>("VLK_DEV_MODEL");
     qRegisterMetaType<VLK_DEV_CONFIG>("VLK_DEV_CONFIG");
@@ -22,6 +25,7 @@ Widget::Widget(QWidget *parent) :
     connect(this, SIGNAL(SignalDeviceModel(VLK_DEV_MODEL)), this, SLOT(onSlotDeviceModel(VLK_DEV_MODEL)));
     connect(this, SIGNAL(SignalDeviceConfig(VLK_DEV_CONFIG)), this, SLOT(onSlotDeviceConfig(VLK_DEV_CONFIG)));
     connect(this, SIGNAL(SignalDeviceTelemetry(VLK_DEV_TELEMETRY)), this, SLOT(onSlotDeviceTelemetry(VLK_DEV_TELEMETRY)));
+    connect(&m_srtTimer, SIGNAL(timeout()), this, SLOT(writeSrtTelemetry()));
 
     InitUI();
 
@@ -276,6 +280,9 @@ void Widget::onSlotDeviceConfig(VLK_DEV_CONFIG config)
 
 void Widget::onSlotDeviceTelemetry(VLK_DEV_TELEMETRY telemetry)
 {
+    m_latestTelemetry = telemetry;
+    m_hasTelemetry = true;
+
     QString::number(telemetry.dPitch);
     ui->lbYaw->setText(QString::number(telemetry.dYaw));
     ui->lbPitch->setText(QString::number(telemetry.dPitch));
@@ -285,55 +292,46 @@ void Widget::onSlotDeviceTelemetry(VLK_DEV_TELEMETRY telemetry)
     ui->lbZoom->setText(QString::number(telemetry.dZoomMagTimes));
     ui->lbLaserDistance->setText(QString::number(telemetry.sLaserDistance));
 
-    // If recording, write subtitle data to both SRT files
-    if (m_bIsRecording) {
-        qint64 elapsedMs = m_recordStartTime.msecsTo(QDateTime::currentDateTime());
-        
-        // Format time stamps for SRT: HH:MM:SS,mmm
-        qint64 ms = elapsedMs % 1000;
-        qint64 secs = (elapsedMs / 1000) % 60;
-        qint64 mins = (elapsedMs / 60000) % 60;
-        qint64 hours = (elapsedMs / 3600000);
+}
 
-        QString timeStart = QString("%1:%2:%3,%4")
-            .arg(hours, 2, 10, QChar('0'))
-            .arg(mins, 2, 10, QChar('0'))
-            .arg(secs, 2, 10, QChar('0'))
-            .arg(ms, 3, 10, QChar('0'));
-
-        qint64 elapsedEndMs = elapsedMs + 990;
-        qint64 msEnd = elapsedEndMs % 1000;
-        qint64 secsEnd = (elapsedEndMs / 1000) % 60;
-        qint64 minsEnd = (elapsedEndMs / 60000) % 60;
-        qint64 hoursEnd = (elapsedEndMs / 3600000);
-
-        QString timeEnd = QString("%1:%2:%3,%4")
-            .arg(hoursEnd, 2, 10, QChar('0'))
-            .arg(minsEnd, 2, 10, QChar('0'))
-            .arg(secsEnd, 2, 10, QChar('0'))
-            .arg(msEnd, 3, 10, QChar('0'));
-
-        QString srtBlock = QString("%1\n%2 --> %3\nGPS: %4, %5 (Alt: %6m)\nYaw: %7, Pitch: %8\nLaser Distance: %9m\n\n")
-            .arg(m_srtIndex)
-            .arg(timeStart)
-            .arg(timeEnd)
-            .arg(telemetry.dTargetLat, 0, 'f', 6)
-            .arg(telemetry.dTargetLng, 0, 'f', 6)
-            .arg(telemetry.dTargetAlt, 0, 'f', 1)
-            .arg(telemetry.dYaw, 0, 'f', 1)
-            .arg(telemetry.dPitch, 0, 'f', 1)
-            .arg(telemetry.sLaserDistance);
-
-        if (m_srtFileEO.isOpen()) {
-            m_srtFileEO.write(srtBlock.toUtf8());
-            m_srtFileEO.flush();
-        }
-        if (m_srtFileIR.isOpen()) {
-            m_srtFileIR.write(srtBlock.toUtf8());
-            m_srtFileIR.flush();
-        }
-        m_srtIndex++;
+void Widget::writeSrtTelemetry()
+{
+    if (!m_bIsRecording || !m_hasTelemetry) {
+        return;
     }
+
+    const qint64 elapsedMs = static_cast<qint64>(m_srtIndex - 1) * 1000;
+    const qint64 elapsedEndMs = elapsedMs + 999;
+    const auto formatSrtTime = [](qint64 value) {
+        return QString("%1:%2:%3,%4")
+            .arg(value / 3600000, 2, 10, QChar('0'))
+            .arg((value / 60000) % 60, 2, 10, QChar('0'))
+            .arg((value / 1000) % 60, 2, 10, QChar('0'))
+            .arg(value % 1000, 3, 10, QChar('0'));
+    };
+
+    const QString srtBlock = QString(
+        "%1\n%2 --> %3\n"
+        "Drone GPS: %4, %5 (Alt: %6m)\n"
+        "Gimbal Yaw: %7, Pitch: %8\n\n")
+        .arg(m_srtIndex)
+        .arg(formatSrtTime(elapsedMs))
+        .arg(formatSrtTime(elapsedEndMs))
+        .arg(m_latestTelemetry.dDroneLat, 0, 'f', 7)
+        .arg(m_latestTelemetry.dDroneLng, 0, 'f', 7)
+        .arg(m_latestTelemetry.dDroneAlt, 0, 'f', 1)
+        .arg(m_latestTelemetry.dYaw, 0, 'f', 1)
+        .arg(m_latestTelemetry.dPitch, 0, 'f', 1);
+
+    if (m_srtFileEO.isOpen()) {
+        m_srtFileEO.write(srtBlock.toUtf8());
+        m_srtFileEO.flush();
+    }
+    if (m_srtFileIR.isOpen()) {
+        m_srtFileIR.write(srtBlock.toUtf8());
+        m_srtFileIR.flush();
+    }
+    ++m_srtIndex;
 }
 
 void Widget::on_btnOpenNetworkVideo_clicked()
@@ -509,28 +507,44 @@ void Widget::on_btnStartRecord_clicked()
     bool eoOk = m_VideoObjNetworkEO.StartLocalRecord(eoVideoPath.toStdString());
     bool irOk = m_VideoObjNetworkIR.StartLocalRecord(irVideoPath.toStdString());
 
-    if (!eoOk && !irOk) {
-        qWarning() << "Failed to start local recording for both streams.";
+    if (!eoOk || !irOk) {
+        if (eoOk) {
+            m_VideoObjNetworkEO.StopLocalRecord();
+        }
+        if (irOk) {
+            m_VideoObjNetworkIR.StopLocalRecord();
+        }
+        QFile::remove(eoVideoPath);
+        QFile::remove(irVideoPath);
+        qWarning() << "Both EO and IR streams must be ready before recording.";
         return;
     }
 
-    if (eoOk) {
-        m_srtFileEO.setFileName(eoSrtPath);
-        if (!m_srtFileEO.open(QIODevice::WriteOnly | QIODevice::Text)) {
-            qWarning() << "Failed to open EO SRT file for writing:" << eoSrtPath;
+    m_srtFileEO.setFileName(eoSrtPath);
+    m_srtFileIR.setFileName(irSrtPath);
+    const bool eoSrtOk = m_srtFileEO.open(QIODevice::WriteOnly | QIODevice::Text);
+    const bool irSrtOk = m_srtFileIR.open(QIODevice::WriteOnly | QIODevice::Text);
+    if (!eoSrtOk || !irSrtOk) {
+        qWarning() << "Failed to open both SRT files:" << eoSrtPath << irSrtPath;
+        m_VideoObjNetworkEO.StopLocalRecord();
+        m_VideoObjNetworkIR.StopLocalRecord();
+        if (m_srtFileEO.isOpen()) {
+            m_srtFileEO.close();
         }
+        if (m_srtFileIR.isOpen()) {
+            m_srtFileIR.close();
+        }
+        QFile::remove(eoVideoPath);
+        QFile::remove(irVideoPath);
+        QFile::remove(eoSrtPath);
+        QFile::remove(irSrtPath);
+        return;
     }
 
-    if (irOk) {
-        m_srtFileIR.setFileName(irSrtPath);
-        if (!m_srtFileIR.open(QIODevice::WriteOnly | QIODevice::Text)) {
-            qWarning() << "Failed to open IR SRT file for writing:" << irSrtPath;
-        }
-    }
-
-    m_recordStartTime = QDateTime::currentDateTime();
     m_srtIndex = 1;
     m_bIsRecording = true;
+    writeSrtTelemetry();
+    m_srtTimer.start(1000);
 
     ui->btnStartRecord->setText(tr("Recording..."));
     ui->btnStartRecord->setStyleSheet("QPushButton { color: red; font-weight: bold; }");
@@ -539,8 +553,6 @@ void Widget::on_btnStartRecord_clicked()
 
     qDebug() << "Started dual local recording to" << eoVideoPath << "and" << irVideoPath;
 
-    // Trigger gimbal onboard recording as well if desired (optional)
-    VLK_SwitchRecord(1);
 }
 
 void Widget::on_btnStopRecord_clicked()
@@ -549,6 +561,7 @@ void Widget::on_btnStopRecord_clicked()
         return;
     }
 
+    m_srtTimer.stop();
     m_bIsRecording = false;
 
     ui->btnStartRecord->setText(tr("Start record"));
@@ -568,6 +581,4 @@ void Widget::on_btnStopRecord_clicked()
 
     qDebug() << "Stopped dual local recording.";
 
-    // Trigger gimbal onboard recording stop
-    VLK_SwitchRecord(0);
 }

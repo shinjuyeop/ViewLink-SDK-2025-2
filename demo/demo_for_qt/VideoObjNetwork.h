@@ -69,6 +69,6 @@ private:
 	AVStream* m_pOutStream;
 	std::mutex m_recordMutex;
 	int64_t m_recordFrameCount;
-	int64_t m_firstRecordPts;
 	int64_t m_firstRecordDts;
+	bool m_waitingForRecordKeyframe;
 };

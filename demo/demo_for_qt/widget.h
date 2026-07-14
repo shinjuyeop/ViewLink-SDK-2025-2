@@ -3,7 +3,7 @@
 
 #include <QWidget>
 #include <QFile>
-#include <QDateTime>
+#include <QTimer>
 #include "ViewLink.h"
 #include "VideoObjNetwork.h"
 #include "VideoObjUSBCamera.h"
@@ -38,6 +38,7 @@ private slots:
     void onSlotDeviceModel(VLK_DEV_MODEL model);
     void onSlotDeviceConfig(VLK_DEV_CONFIG config);
     void onSlotDeviceTelemetry(VLK_DEV_TELEMETRY telemetry);
+    void writeSrtTelemetry();
     void on_btnUp_pressed();
 
     void on_btnUp_released();
@@ -93,7 +94,9 @@ private:
 
     // Recording and SRT variables
     bool m_bIsRecording;
-    QDateTime m_recordStartTime;
+    bool m_hasTelemetry;
+    VLK_DEV_TELEMETRY m_latestTelemetry;
+    QTimer m_srtTimer;
     QFile m_srtFileEO;
     QFile m_srtFileIR;
     int m_srtIndex;

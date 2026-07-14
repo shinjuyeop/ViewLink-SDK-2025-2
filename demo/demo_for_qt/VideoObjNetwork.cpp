@@ -23,8 +23,8 @@ CVideoObjNetwork::CVideoObjNetwork()
 	, m_pOutFmtCtx(NULL)
 	, m_pOutStream(NULL)
 	, m_recordFrameCount(0)
-	, m_firstRecordPts(-1)
-	, m_firstRecordDts(-1)
+	, m_firstRecordDts(AV_NOPTS_VALUE)
+	, m_waitingForRecordKeyframe(true)
 {
 }
 
@@ -239,17 +239,7 @@ void CVideoObjNetwork::ReadPacketLoop()
 			break;
 		}
 
-        // convert pts timebase and dts timebase to millisecond timebase
-        if (pkt->pts != AV_NOPTS_VALUE)
-        {
-            pkt->pts = pkt->pts*(1000 * (r2d(m_pAVFmtContext->streams[pkt->stream_index]->time_base)));
-        }
-        if (pkt->dts != AV_NOPTS_VALUE)
-        {
-            pkt->dts = pkt->dts*(1000 * (r2d(m_pAVFmtContext->streams[pkt->stream_index]->time_base)));
-        }
-
-        // send video package to decoder
+		// send video package to decoder
         if (pkt->stream_index == m_iVideoStreamIndex)
 		{
 			WriteLocalRecord(pkt);
@@ -275,40 +265,46 @@ void CVideoObjNetwork::WriteLocalRecord(const AVPacket* pkt)
         return;
     }
 
-    AVStream* inStream = m_pAVFmtContext->streams[m_iVideoStreamIndex];
-    AVStream* outStream = m_pOutStream;
+	AVStream* inStream = m_pAVFmtContext->streams[m_iVideoStreamIndex];
+	AVStream* outStream = m_pOutStream;
 
-    AVRational inTimeBase = {1, 1000};
-    AVRational outTimeBase = outStream->time_base;
+	if (m_waitingForRecordKeyframe) {
+		if (!(out_pkt->flags & AV_PKT_FLAG_KEY)) {
+			av_packet_free(&out_pkt);
+			return;
+		}
+		m_waitingForRecordKeyframe = false;
+	}
 
-    int64_t pts = out_pkt->pts;
-    int64_t dts = out_pkt->dts;
+	int64_t pts = out_pkt->pts;
+	int64_t dts = out_pkt->dts;
 
-    if (pts == AV_NOPTS_VALUE || pts < 0) {
-        pts = m_recordFrameCount * 33; // 33ms per frame
-    }
-    if (dts == AV_NOPTS_VALUE || dts < 0) {
-        dts = pts;
-    }
-    m_recordFrameCount++;
+	if (pts == AV_NOPTS_VALUE && dts != AV_NOPTS_VALUE) {
+		pts = dts;
+	} else if (pts == AV_NOPTS_VALUE) {
+		AVRational frameRate = av_guess_frame_rate(m_pAVFmtContext, inStream, NULL);
+		if (frameRate.num <= 0 || frameRate.den <= 0) {
+			frameRate = AVRational{30, 1};
+		}
+		pts = av_rescale_q(m_recordFrameCount, av_inv_q(frameRate), inStream->time_base);
+	}
+	if (dts == AV_NOPTS_VALUE) {
+		dts = pts;
+	}
+	++m_recordFrameCount;
 
-    if (m_firstRecordDts == -1) {
+    if (m_firstRecordDts == AV_NOPTS_VALUE) {
         m_firstRecordDts = dts;
     }
 
     pts -= m_firstRecordDts;
     dts -= m_firstRecordDts;
 
-    if (pts < 0) pts = 0;
-    if (dts < 0) dts = 0;
-    if (pts < dts) {
-        pts = dts;
-    }
-
-    out_pkt->pts = av_rescale_q(pts, inTimeBase, outTimeBase);
-    out_pkt->dts = av_rescale_q(dts, inTimeBase, outTimeBase);
-    out_pkt->duration = av_rescale_q(out_pkt->duration, inStream->time_base, outTimeBase);
-    out_pkt->stream_index = 0;
+	out_pkt->pts = pts;
+	out_pkt->dts = dts;
+	av_packet_rescale_ts(out_pkt, inStream->time_base, outStream->time_base);
+	out_pkt->stream_index = outStream->index;
+	out_pkt->pos = -1;
 
     int ret = av_interleaved_write_frame(m_pOutFmtCtx, out_pkt);
     if (ret < 0) {
@@ -389,9 +385,9 @@ bool CVideoObjNetwork::StartLocalRecord(const std::string& filename)
         return false;
     }
 
-    m_recordFrameCount = 0;
-    m_firstRecordPts = -1;
-    m_firstRecordDts = -1;
+	m_recordFrameCount = 0;
+	m_firstRecordDts = AV_NOPTS_VALUE;
+	m_waitingForRecordKeyframe = true;
     m_bRecordEnabled = true;
     qDebug("Started recording to file: %s", filename.c_str());
     return true;
