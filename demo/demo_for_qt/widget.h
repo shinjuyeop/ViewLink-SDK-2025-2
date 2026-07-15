@@ -2,6 +2,8 @@
 #define WIDGET_H
 
 #include <QWidget>
+#include <QDateTime>
+#include <QElapsedTimer>
 #include <QFile>
 #include <QTimer>
 #include "ViewLink.h"
@@ -84,6 +86,7 @@ private slots:
 private:
     // initialize UI control
     void InitUI();
+    void writeRecordMetadata();
 
 private:
     Ui::Widget *ui;
@@ -94,8 +97,14 @@ private:
 
     // Recording and SRT variables
     bool m_bIsRecording;
+    bool m_deviceConnected;
     bool m_hasTelemetry;
     VLK_DEV_TELEMETRY m_latestTelemetry;
+    QElapsedTimer m_lastTelemetryTimer;
+    QElapsedTimer m_recordElapsedTimer;
+    qint64 m_previousSrtMs;
+    QDateTime m_recordSessionUtc;
+    QString m_recordMetadataPath;
     QTimer m_srtTimer;
     QFile m_srtFileEO;
     QFile m_srtFileIR;

@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include <chrono>
 #include <mutex>
 #include <thread>
 
@@ -18,6 +19,17 @@ class VLKVideoWidget;
 class CVideoObjNetwork
 {
 public:
+	using RecordClock = std::chrono::steady_clock;
+	struct RecordTimingInfo
+	{
+		bool hasFirstKeyframe = false;
+		int64_t firstKeyframeOffsetMs = -1;
+		int64_t sourcePts = AV_NOPTS_VALUE;
+		int64_t sourceDts = AV_NOPTS_VALUE;
+		int timeBaseNum = 0;
+		int timeBaseDen = 0;
+	};
+
 	CVideoObjNetwork();
 	virtual ~CVideoObjNetwork();
 
@@ -27,7 +39,9 @@ public:
 	virtual void Clear();
 	virtual void Close();
 	virtual bool StartLocalRecord(const std::string& filename);
+	virtual bool StartLocalRecord(const std::string& filename, RecordClock::time_point sessionStart);
 	virtual void StopLocalRecord();
+	RecordTimingInfo GetRecordTimingInfo();
 	virtual void Capture();
 private:
 	static void ThreadFunc(CVideoObjNetwork* pThis);
@@ -71,4 +85,6 @@ private:
 	int64_t m_recordFrameCount;
 	int64_t m_firstRecordDts;
 	bool m_waitingForRecordKeyframe;
+	RecordClock::time_point m_recordSessionStart;
+	RecordTimingInfo m_recordTimingInfo;
 };

@@ -230,6 +230,12 @@ void CVideoObjNetwork::ReadPacketLoop()
 	{
 		AVPacket *pkt = av_packet_alloc();
 		int re = av_read_frame(m_pAVFmtContext, pkt);
+		if (re == AVERROR(EAGAIN))
+		{
+			av_packet_free(&pkt);
+			std::this_thread::sleep_for(std::chrono::milliseconds(10));
+			continue;
+		}
 		if (re != 0)
 		{
 			av_packet_free(&pkt);
@@ -273,6 +279,14 @@ void CVideoObjNetwork::WriteLocalRecord(const AVPacket* pkt)
 			av_packet_free(&out_pkt);
 			return;
 		}
+		m_recordTimingInfo.hasFirstKeyframe = true;
+		m_recordTimingInfo.firstKeyframeOffsetMs =
+			std::chrono::duration_cast<std::chrono::milliseconds>(
+				RecordClock::now() - m_recordSessionStart).count();
+		m_recordTimingInfo.sourcePts = out_pkt->pts;
+		m_recordTimingInfo.sourceDts = out_pkt->dts;
+		m_recordTimingInfo.timeBaseNum = inStream->time_base.num;
+		m_recordTimingInfo.timeBaseDen = inStream->time_base.den;
 		m_waitingForRecordKeyframe = false;
 	}
 
@@ -327,6 +341,13 @@ void CVideoObjNetwork::Clear()
 
 bool CVideoObjNetwork::StartLocalRecord(const std::string& filename)
 {
+	return StartLocalRecord(filename, RecordClock::now());
+}
+
+bool CVideoObjNetwork::StartLocalRecord(
+	const std::string& filename,
+	RecordClock::time_point sessionStart)
+{
     std::lock_guard<std::mutex> lock(m_recordMutex);
     if (m_bRecordEnabled) {
         return false;
@@ -361,6 +382,10 @@ bool CVideoObjNetwork::StartLocalRecord(const std::string& filename)
         return false;
     }
     m_pOutStream->codecpar->codec_tag = 0;
+	if (inStream->time_base.num > 0 && inStream->time_base.den > 0) {
+		m_pOutStream->time_base = inStream->time_base;
+	}
+	m_pOutStream->avg_frame_rate = inStream->avg_frame_rate;
 
     if (!(m_pOutFmtCtx->oformat->flags & AVFMT_NOFILE)) {
         ret = avio_open(&m_pOutFmtCtx->pb, filename.c_str(), AVIO_FLAG_WRITE);
@@ -388,9 +413,17 @@ bool CVideoObjNetwork::StartLocalRecord(const std::string& filename)
 	m_recordFrameCount = 0;
 	m_firstRecordDts = AV_NOPTS_VALUE;
 	m_waitingForRecordKeyframe = true;
+	m_recordSessionStart = sessionStart;
+	m_recordTimingInfo = RecordTimingInfo();
     m_bRecordEnabled = true;
     qDebug("Started recording to file: %s", filename.c_str());
     return true;
+}
+
+CVideoObjNetwork::RecordTimingInfo CVideoObjNetwork::GetRecordTimingInfo()
+{
+	std::lock_guard<std::mutex> lock(m_recordMutex);
+	return m_recordTimingInfo;
 }
 
 void CVideoObjNetwork::StopLocalRecord()

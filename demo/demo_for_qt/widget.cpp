@@ -6,13 +6,18 @@
 #include <QCamera>
 #include <QDateTime>
 #include <QDir>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QSaveFile>
 #include <QTimer>
 
 Widget::Widget(QWidget *parent) :
     QWidget(parent),
     ui(new Ui::Widget),
     m_bIsRecording(false),
+    m_deviceConnected(false),
     m_hasTelemetry(false),
+    m_previousSrtMs(0),
     m_srtIndex(1)
 {
     memset(&m_latestTelemetry, 0, sizeof(m_latestTelemetry));
@@ -34,6 +39,9 @@ Widget::Widget(QWidget *parent) :
 
 Widget::~Widget()
 {
+    if (m_bIsRecording) {
+        on_btnStopRecord_clicked();
+    }
     m_VideoObjNetworkEO.Close();
     m_VideoObjNetworkIR.Close();
     m_VideoObjUSBCamera.Close();
@@ -244,21 +252,27 @@ void Widget::onSlotConnectionStatus(int iConnStatus, const QString& strMessage)
     Q_UNUSED(strMessage);
     if (iConnStatus == VLK_CONN_STATUS_TCP_CONNECTED)
     {
+       m_deviceConnected = true;
        qDebug() << "TCP Gimbal connected !!!";
        ui->btnConnectTCP->setText(tr("Disconnect"));
     }
     else if (iConnStatus == VLK_CONN_STATUS_TCP_DISCONNECTED)
     {
+        m_deviceConnected = false;
+        m_hasTelemetry = false;
         qDebug() << "TCP Gimbal disconnected !!!";
         ui->btnConnectTCP->setText("Connect");
     }
     else if (iConnStatus == VLK_CONN_STATUS_SERIAL_PORT_CONNECTED)
     {
+        m_deviceConnected = true;
         qDebug() << "Serial port Gimbal connected !!!";
         ui->btnConnctSerialPort->setText(tr("Disconnect"));
     }
     else if (iConnStatus == VLK_CONN_STATUS_SERIAL_PORT_DISCONNECTED)
     {
+        m_deviceConnected = false;
+        m_hasTelemetry = false;
         qDebug() << "Serial port Gimbal disconnected !!!";
         ui->btnConnctSerialPort->setText(tr("Connect"));
     }
@@ -282,6 +296,7 @@ void Widget::onSlotDeviceTelemetry(VLK_DEV_TELEMETRY telemetry)
 {
     m_latestTelemetry = telemetry;
     m_hasTelemetry = true;
+    m_lastTelemetryTimer.start();
 
     QString::number(telemetry.dPitch);
     ui->lbYaw->setText(QString::number(telemetry.dYaw));
@@ -296,12 +311,16 @@ void Widget::onSlotDeviceTelemetry(VLK_DEV_TELEMETRY telemetry)
 
 void Widget::writeSrtTelemetry()
 {
-    if (!m_bIsRecording || !m_hasTelemetry) {
+    if (!m_bIsRecording || !m_recordElapsedTimer.isValid()) {
         return;
     }
 
-    const qint64 elapsedMs = static_cast<qint64>(m_srtIndex - 1) * 1000;
-    const qint64 elapsedEndMs = elapsedMs + 999;
+    const qint64 elapsedMs = m_previousSrtMs;
+    const qint64 elapsedEndMs = m_recordElapsedTimer.elapsed();
+    if (elapsedEndMs <= elapsedMs) {
+        return;
+    }
+    m_previousSrtMs = elapsedEndMs;
     const auto formatSrtTime = [](qint64 value) {
         return QString("%1:%2:%3,%4")
             .arg(value / 3600000, 2, 10, QChar('0'))
@@ -310,18 +329,31 @@ void Widget::writeSrtTelemetry()
             .arg(value % 1000, 3, 10, QChar('0'));
     };
 
-    const QString srtBlock = QString(
-        "%1\n%2 --> %3\n"
-        "Drone GPS: %4, %5 (Alt: %6m)\n"
-        "Gimbal Yaw: %7, Pitch: %8\n\n")
+    const bool telemetryFresh = m_deviceConnected
+        && m_hasTelemetry
+        && m_lastTelemetryTimer.isValid()
+        && m_lastTelemetryTimer.elapsed() <= 2000;
+
+    QString telemetryText;
+    if (telemetryFresh) {
+        telemetryText = QString(
+            "Drone GPS: %1, %2 (Alt: %3m)\n"
+            "Gimbal Yaw: %4, Pitch: %5")
+            .arg(m_latestTelemetry.dDroneLat, 0, 'f', 7)
+            .arg(m_latestTelemetry.dDroneLng, 0, 'f', 7)
+            .arg(m_latestTelemetry.dDroneAlt, 0, 'f', 1)
+            .arg(m_latestTelemetry.dYaw, 0, 'f', 1)
+            .arg(m_latestTelemetry.dPitch, 0, 'f', 1);
+    } else {
+        const QString status = m_deviceConnected ? "stale or unavailable" : "disconnected";
+        telemetryText = QString("Drone GPS: N/A\nTelemetry: %1").arg(status);
+    }
+
+    const QString srtBlock = QString("%1\n%2 --> %3\n%4\n\n")
         .arg(m_srtIndex)
         .arg(formatSrtTime(elapsedMs))
         .arg(formatSrtTime(elapsedEndMs))
-        .arg(m_latestTelemetry.dDroneLat, 0, 'f', 7)
-        .arg(m_latestTelemetry.dDroneLng, 0, 'f', 7)
-        .arg(m_latestTelemetry.dDroneAlt, 0, 'f', 1)
-        .arg(m_latestTelemetry.dYaw, 0, 'f', 1)
-        .arg(m_latestTelemetry.dPitch, 0, 'f', 1);
+        .arg(telemetryText);
 
     if (m_srtFileEO.isOpen()) {
         m_srtFileEO.write(srtBlock.toUtf8());
@@ -498,14 +530,19 @@ void Widget::on_btnStartRecord_clicked()
 
     QDir().mkdir("records");
 
-    QString timestamp = QDateTime::currentDateTime().toString("yyyyMMdd_hhmmss");
+    QString timestamp = QDateTime::currentDateTime().toString("yyyyMMdd_hhmmss_zzz");
     QString eoVideoPath = QString("records/eo_%1.mp4").arg(timestamp);
     QString irVideoPath = QString("records/ir_%1.mp4").arg(timestamp);
     QString eoSrtPath = QString("records/eo_%1.srt").arg(timestamp);
     QString irSrtPath = QString("records/ir_%1.srt").arg(timestamp);
+    m_recordMetadataPath = QString("records/session_%1.json").arg(timestamp);
+    m_recordSessionUtc = QDateTime::currentDateTimeUtc();
+    m_recordElapsedTimer.start();
+    const CVideoObjNetwork::RecordClock::time_point sessionStart =
+        CVideoObjNetwork::RecordClock::now();
 
-    bool eoOk = m_VideoObjNetworkEO.StartLocalRecord(eoVideoPath.toStdString());
-    bool irOk = m_VideoObjNetworkIR.StartLocalRecord(irVideoPath.toStdString());
+    bool eoOk = m_VideoObjNetworkEO.StartLocalRecord(eoVideoPath.toStdString(), sessionStart);
+    bool irOk = m_VideoObjNetworkIR.StartLocalRecord(irVideoPath.toStdString(), sessionStart);
 
     if (!eoOk || !irOk) {
         if (eoOk) {
@@ -516,6 +553,8 @@ void Widget::on_btnStartRecord_clicked()
         }
         QFile::remove(eoVideoPath);
         QFile::remove(irVideoPath);
+        m_recordElapsedTimer.invalidate();
+        m_recordMetadataPath.clear();
         qWarning() << "Both EO and IR streams must be ready before recording.";
         return;
     }
@@ -538,12 +577,14 @@ void Widget::on_btnStartRecord_clicked()
         QFile::remove(irVideoPath);
         QFile::remove(eoSrtPath);
         QFile::remove(irSrtPath);
+        m_recordElapsedTimer.invalidate();
+        m_recordMetadataPath.clear();
         return;
     }
 
     m_srtIndex = 1;
+    m_previousSrtMs = 0;
     m_bIsRecording = true;
-    writeSrtTelemetry();
     m_srtTimer.start(1000);
 
     ui->btnStartRecord->setText(tr("Recording..."));
@@ -562,6 +603,7 @@ void Widget::on_btnStopRecord_clicked()
     }
 
     m_srtTimer.stop();
+    writeSrtTelemetry();
     m_bIsRecording = false;
 
     ui->btnStartRecord->setText(tr("Start record"));
@@ -571,6 +613,7 @@ void Widget::on_btnStopRecord_clicked()
 
     m_VideoObjNetworkEO.StopLocalRecord();
     m_VideoObjNetworkIR.StopLocalRecord();
+    writeRecordMetadata();
 
     if (m_srtFileEO.isOpen()) {
         m_srtFileEO.close();
@@ -581,4 +624,68 @@ void Widget::on_btnStopRecord_clicked()
 
     qDebug() << "Stopped dual local recording.";
 
+    m_recordElapsedTimer.invalidate();
+    m_recordMetadataPath.clear();
+
+}
+
+void Widget::writeRecordMetadata()
+{
+    if (m_recordMetadataPath.isEmpty()) {
+        return;
+    }
+
+    const CVideoObjNetwork::RecordTimingInfo eo =
+        m_VideoObjNetworkEO.GetRecordTimingInfo();
+    const CVideoObjNetwork::RecordTimingInfo ir =
+        m_VideoObjNetworkIR.GetRecordTimingInfo();
+
+    const auto timingToJson = [](const CVideoObjNetwork::RecordTimingInfo& timing) {
+        QJsonObject result;
+        result["first_keyframe_recorded"] = timing.hasFirstKeyframe;
+        if (!timing.hasFirstKeyframe) {
+            result["first_keyframe_offset_ms"] = QJsonValue(QJsonValue::Null);
+            return result;
+        }
+
+        result["first_keyframe_offset_ms"] =
+            static_cast<double>(timing.firstKeyframeOffsetMs);
+        result["source_pts"] = timing.sourcePts == AV_NOPTS_VALUE
+            ? QJsonValue(QJsonValue::Null)
+            : QJsonValue(static_cast<double>(timing.sourcePts));
+        result["source_dts"] = timing.sourceDts == AV_NOPTS_VALUE
+            ? QJsonValue(QJsonValue::Null)
+            : QJsonValue(static_cast<double>(timing.sourceDts));
+        QJsonObject timeBase;
+        timeBase["num"] = timing.timeBaseNum;
+        timeBase["den"] = timing.timeBaseDen;
+        result["source_time_base"] = timeBase;
+        return result;
+    };
+
+    QJsonObject root;
+    root["session_start_utc"] = m_recordSessionUtc.toString(Qt::ISODateWithMs);
+    root["session_end_utc"] = QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);
+    root["session_elapsed_ms"] = m_recordElapsedTimer.isValid()
+        ? QJsonValue(static_cast<double>(m_recordElapsedTimer.elapsed()))
+        : QJsonValue(QJsonValue::Null);
+    root["eo"] = timingToJson(eo);
+    root["ir"] = timingToJson(ir);
+    root["ir_minus_eo_first_keyframe_ms"] =
+        eo.hasFirstKeyframe && ir.hasFirstKeyframe
+        ? QJsonValue(static_cast<double>(
+            ir.firstKeyframeOffsetMs - eo.firstKeyframeOffsetMs))
+        : QJsonValue(QJsonValue::Null);
+    root["timing_note"] =
+        "Offsets use host packet-arrival time and do not prove sensor-level synchronization.";
+
+    QSaveFile metadataFile(m_recordMetadataPath);
+    if (!metadataFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        qWarning() << "Failed to open recording metadata:" << m_recordMetadataPath;
+        return;
+    }
+    metadataFile.write(QJsonDocument(root).toJson(QJsonDocument::Indented));
+    if (!metadataFile.commit()) {
+        qWarning() << "Failed to save recording metadata:" << m_recordMetadataPath;
+    }
 }
