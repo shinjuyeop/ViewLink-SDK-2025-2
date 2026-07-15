@@ -1,0 +1,82 @@
+name: Build Windows package
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows:
+    name: Qt 5.15.2 / MinGW 8.1 (64-bit)
+    runs-on: windows-2022
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Qt and MinGW
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: "5.15.2"
+          arch: "win64_mingw81"
+          tools: "tools_mingw,qt.tools.win64_mingw810"
+          cache: true
+
+      - name: Configure and build
+        shell: pwsh
+        working-directory: demo/demo_for_qt
+        run: |
+          New-Item -ItemType Directory -Force bin/win64 | Out-Null
+          qmake demo_for_qt.pro -spec win32-g++ "CONFIG+=release"
+          mingw32-make -j2
+
+          if (-not (Test-Path bin/win64/demo_for_qt.exe)) {
+            throw "Expected executable was not created: demo/demo_for_qt/bin/win64/demo_for_qt.exe"
+          }
+
+      - name: Prepare deployment directory
+        shell: pwsh
+        run: |
+          $outputDir = "demo/demo_for_qt/bin/win64"
+          $deployDir = "deploy-ci/demo_for_qt_win64"
+
+          New-Item -ItemType Directory -Force $deployDir | Out-Null
+          Copy-Item "$outputDir/demo_for_qt.exe" $deployDir
+          Copy-Item "$outputDir/*.dll" $deployDir
+
+          windeployqt --release --compiler-runtime --no-translations `
+            "$deployDir/demo_for_qt.exe"
+
+          $requiredFiles = @(
+            "demo_for_qt.exe",
+            "ViewLink.dll",
+            "avcodec-57.dll",
+            "avformat-57.dll",
+            "avutil-55.dll",
+            "Qt5Core.dll",
+            "Qt5Widgets.dll",
+            "platforms/qwindows.dll"
+          )
+
+          foreach ($file in $requiredFiles) {
+            if (-not (Test-Path "$deployDir/$file")) {
+              throw "Required deployment file is missing: $file"
+            }
+          }
+
+      - name: Create ZIP package
+        shell: pwsh
+        run: |
+          Compress-Archive `
+            -Path "deploy-ci/demo_for_qt_win64/*" `
+            -DestinationPath "deploy-ci/demo_for_qt_win64.zip" `
+            -Force
+
+      - name: Upload Windows package
+        uses: actions/upload-artifact@v4
+        with:
+          name: demo_for_qt-win64
+          path: deploy-ci/demo_for_qt_win64.zip
+          if-no-files-found: error
+          retention-days: 30
