@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include <atomic>
 #include <chrono>
 #include <mutex>
 #include <thread>
@@ -35,6 +36,8 @@ public:
 
     virtual bool Open(const std::string& strURL, VLKVideoWidget* pVideoWidget);
     virtual bool IsOpen();
+	bool IsStreamReady() const;
+	bool IsLocalRecording();
 	void SetDataCallback(VideoDataCallback pVideoDataCB, long lUserParam);
 	virtual void Clear();
 	virtual void Close();
@@ -70,7 +73,8 @@ private:
     int m_iHeight;
 
 	std::thread* m_pThread;
-    bool m_bExit;
+	std::atomic<bool> m_bExit;
+	std::atomic<bool> m_streamReady;
 
 	VideoDataCallback m_cbFunc;
 	long m_lUserParam;

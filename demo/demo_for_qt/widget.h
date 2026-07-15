@@ -86,6 +86,8 @@ private slots:
 private:
     // initialize UI control
     void InitUI();
+	void appendSrtTelemetry();
+	void stopRecording(const QString& reasonCode, const QString& warningMessage = QString());
     void writeRecordMetadata();
 
 private:
@@ -105,6 +107,7 @@ private:
     qint64 m_previousSrtMs;
     QDateTime m_recordSessionUtc;
     QString m_recordMetadataPath;
+	QString m_recordStopReason;
     QTimer m_srtTimer;
     QFile m_srtFileEO;
     QFile m_srtFileIR;

@@ -9,16 +9,17 @@ static double r2d(AVRational r)
 }
 
 CVideoObjNetwork::CVideoObjNetwork()
-	: m_pAVFmtContext(NULL)
+	: m_pVideoWidget(NULL)
+	, m_pAVFmtContext(NULL)
 	, m_iVideoStreamIndex(-1)
 	, m_iAudioStreamIndex(-1)
     , m_iWidth(0), m_iHeight(0)
     , m_pThread(NULL)
+	, m_bExit(false)
+	, m_streamReady(false)
     , m_cbFunc(NULL)
     , m_lUserParam(0)
-    , m_bExit(false)
 	, m_pCodecContext(NULL)
-    , m_pVideoWidget(NULL)
 	,m_bRecordEnabled(false)
 	, m_pOutFmtCtx(NULL)
 	, m_pOutStream(NULL)
@@ -58,10 +59,11 @@ bool CVideoObjNetwork::Open(const std::string& strURL, VLKVideoWidget* pVideoWid
 
 	Close();
 
-    m_strURL = strURL;
+	m_strURL = strURL;
     m_pVideoWidget = pVideoWidget;
 
-	m_bExit = false;
+	m_streamReady.store(false);
+	m_bExit.store(false);
 	m_pThread = new std::thread(ThreadFunc, this);
 
 	return true;
@@ -70,6 +72,17 @@ bool CVideoObjNetwork::Open(const std::string& strURL, VLKVideoWidget* pVideoWid
 bool CVideoObjNetwork::IsOpen()
 {
    return m_pThread != NULL;
+}
+
+bool CVideoObjNetwork::IsStreamReady() const
+{
+	return m_streamReady.load();
+}
+
+bool CVideoObjNetwork::IsLocalRecording()
+{
+	std::lock_guard<std::mutex> lock(m_recordMutex);
+	return m_bRecordEnabled;
 }
 
 void CVideoObjNetwork::SetDataCallback(VideoDataCallback pVideoDataCB, long lUserParam)
@@ -82,7 +95,8 @@ void CVideoObjNetwork::Close()
 {
 	if (m_pThread != NULL)
 	{
-		m_bExit = true;
+		m_streamReady.store(false);
+		m_bExit.store(true);
 		m_pThread->join();
 		delete m_pThread;
 		m_pThread = NULL;
@@ -181,7 +195,7 @@ int CVideoObjNetwork::interrupt_callback(void* para)
 		return 0;
 	}
 
-    if (pThis->m_bExit)
+    if (pThis->m_bExit.load())
     {
         return 1;
     }
@@ -199,8 +213,9 @@ void CVideoObjNetwork::ThreadFunc(CVideoObjNetwork* pThis)
 
 void CVideoObjNetwork::OnThreadFunc()
 {
-    while (!m_bExit)
+	while (!m_bExit.load())
     {
+		m_streamReady.store(false);
         if (!OpenDemux(m_strURL))
         {
             CloseDemux();
@@ -217,7 +232,9 @@ void CVideoObjNetwork::OnThreadFunc()
 			continue;
 		}
 
+		m_streamReady.store(true);
         ReadPacketLoop();
+		m_streamReady.store(false);
 
 		CloseDecoder();
         CloseDemux();
@@ -226,7 +243,7 @@ void CVideoObjNetwork::OnThreadFunc()
 
 void CVideoObjNetwork::ReadPacketLoop()
 {
-    while (!m_bExit)
+	while (!m_bExit.load())
 	{
 		AVPacket *pkt = av_packet_alloc();
 		int re = av_read_frame(m_pAVFmtContext, pkt);

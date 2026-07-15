@@ -8,7 +8,9 @@
 #include <QDir>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QMessageBox>
 #include <QSaveFile>
+#include <QStringList>
 #include <QTimer>
 
 Widget::Widget(QWidget *parent) :
@@ -40,7 +42,7 @@ Widget::Widget(QWidget *parent) :
 Widget::~Widget()
 {
     if (m_bIsRecording) {
-        on_btnStopRecord_clicked();
+		stopRecording("application_shutdown");
     }
     m_VideoObjNetworkEO.Close();
     m_VideoObjNetworkIR.Close();
@@ -315,6 +317,35 @@ void Widget::writeSrtTelemetry()
         return;
     }
 
+	const bool eoHealthy = m_VideoObjNetworkEO.IsStreamReady()
+		&& m_VideoObjNetworkEO.IsLocalRecording();
+	const bool irHealthy = m_VideoObjNetworkIR.IsStreamReady()
+		&& m_VideoObjNetworkIR.IsLocalRecording();
+	if (!eoHealthy || !irHealthy) {
+		QStringList interruptedStreams;
+		if (!eoHealthy) {
+			interruptedStreams.append("EO");
+		}
+		if (!irHealthy) {
+			interruptedStreams.append("IR");
+		}
+		const QString streamNames = interruptedStreams.join(",");
+		stopRecording(
+			QString("stream_interrupted:%1").arg(streamNames),
+			tr("%1 stream disconnected or stopped. EO and IR recording was stopped together.")
+				.arg(streamNames));
+		return;
+	}
+
+	appendSrtTelemetry();
+}
+
+void Widget::appendSrtTelemetry()
+{
+	if (!m_bIsRecording || !m_recordElapsedTimer.isValid()) {
+		return;
+	}
+
     const qint64 elapsedMs = m_previousSrtMs;
     const qint64 elapsedEndMs = m_recordElapsedTimer.elapsed();
     if (elapsedEndMs <= elapsedMs) {
@@ -372,6 +403,9 @@ void Widget::on_btnOpenNetworkVideo_clicked()
 
     if (m_VideoObjNetworkEO.IsOpen())
     {
+		if (m_bIsRecording) {
+			stopRecording("stream_closed:EO");
+		}
        m_VideoObjNetworkEO.Close();
        ui->widgetMainVideo->Clear();
        ui->btnOpenNetworkVideo->setText(tr("Open"));
@@ -390,6 +424,9 @@ void Widget::on_btnOpenNetworkVideoIR_clicked()
 
     if (m_VideoObjNetworkIR.IsOpen())
     {
+		if (m_bIsRecording) {
+			stopRecording("stream_closed:IR");
+		}
        m_VideoObjNetworkIR.Close();
        ui->widgetSubVideo->Clear();
        ui->btnOpenNetworkVideoIR->setText(tr("Open"));
@@ -404,6 +441,9 @@ void Widget::on_btnOpenNetworkVideoIR_clicked()
 
 void Widget::on_btnOpenUSBVideo_clicked()
 {
+	if (m_bIsRecording) {
+		stopRecording("video_source_changed");
+	}
     m_VideoObjNetworkEO.Close();
     m_VideoObjNetworkIR.Close();
 
@@ -528,6 +568,15 @@ void Widget::on_btnStartRecord_clicked()
         return;
     }
 
+	if (!m_VideoObjNetworkEO.IsStreamReady()
+		|| !m_VideoObjNetworkIR.IsStreamReady()) {
+		QMessageBox::warning(
+			this,
+			tr("Recording unavailable"),
+			tr("Open both EO and IR streams and wait until both streams are ready before recording."));
+		return;
+	}
+
     QDir().mkdir("records");
 
     QString timestamp = QDateTime::currentDateTime().toString("yyyyMMdd_hhmmss_zzz");
@@ -584,6 +633,7 @@ void Widget::on_btnStartRecord_clicked()
 
     m_srtIndex = 1;
     m_previousSrtMs = 0;
+	m_recordStopReason = "recording";
     m_bIsRecording = true;
     m_srtTimer.start(1000);
 
@@ -598,13 +648,19 @@ void Widget::on_btnStartRecord_clicked()
 
 void Widget::on_btnStopRecord_clicked()
 {
-    if (!m_bIsRecording) {
-        return;
-    }
+	stopRecording("user");
+}
 
-    m_srtTimer.stop();
-    writeSrtTelemetry();
-    m_bIsRecording = false;
+void Widget::stopRecording(const QString& reasonCode, const QString& warningMessage)
+{
+	if (!m_bIsRecording) {
+		return;
+	}
+
+	m_srtTimer.stop();
+	appendSrtTelemetry();
+	m_bIsRecording = false;
+	m_recordStopReason = reasonCode;
 
     ui->btnStartRecord->setText(tr("Start record"));
     ui->btnStartRecord->setStyleSheet("");
@@ -627,6 +683,9 @@ void Widget::on_btnStopRecord_clicked()
     m_recordElapsedTimer.invalidate();
     m_recordMetadataPath.clear();
 
+	if (!warningMessage.isEmpty()) {
+		QMessageBox::warning(this, tr("Recording stopped"), warningMessage);
+	}
 }
 
 void Widget::writeRecordMetadata()
@@ -669,6 +728,7 @@ void Widget::writeRecordMetadata()
     root["session_elapsed_ms"] = m_recordElapsedTimer.isValid()
         ? QJsonValue(static_cast<double>(m_recordElapsedTimer.elapsed()))
         : QJsonValue(QJsonValue::Null);
+	root["stop_reason"] = m_recordStopReason;
     root["eo"] = timingToJson(eo);
     root["ir"] = timingToJson(ir);
     root["ir_minus_eo_first_keyframe_ms"] =
