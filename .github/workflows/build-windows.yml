@@ -40,14 +40,28 @@ jobs:
         run: |
           $outputDir = "demo/demo_for_qt/bin/win64"
           $deployDir = "deploy-ci/demo_for_qt_win64"
+          $windeployqt = Join-Path $env:QT_ROOT_DIR "bin/windeployqt.exe"
+          $platformPlugin = Join-Path $env:QT_ROOT_DIR "plugins/platforms/qwindows.dll"
+
+          if (-not (Test-Path $windeployqt)) {
+            throw "windeployqt was not found: $windeployqt"
+          }
+
+          if (-not (Test-Path $platformPlugin)) {
+            throw "Qt platform plugin was not found: $platformPlugin"
+          }
 
           New-Item -ItemType Directory -Force $deployDir | Out-Null
           Copy-Item "$outputDir/demo_for_qt.exe" $deployDir
           Copy-Item "bin/win64/*.dll" $deployDir
           Copy-Item "demo/demo_for_windows/ffmpeg/bin/win64/*.dll" $deployDir
 
-          windeployqt --release --compiler-runtime --no-translations `
+          & $windeployqt --compiler-runtime --no-translations `
             "$deployDir/demo_for_qt.exe"
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "windeployqt failed with exit code $LASTEXITCODE"
+          }
 
           $requiredFiles = @(
             "demo_for_qt.exe",
