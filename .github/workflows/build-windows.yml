@@ -28,7 +28,7 @@ jobs:
         working-directory: demo/demo_for_qt
         run: |
           New-Item -ItemType Directory -Force bin/win64 | Out-Null
-          qmake demo_for_qt.pro -spec win32-g++ "CONFIG+=release"
+          qmake demo_for_qt.pro -spec win32-g++ "CONFIG+=release" "CONFIG+=ci"
           mingw32-make -j2
 
           if (-not (Test-Path bin/win64/demo_for_qt.exe)) {
@@ -43,7 +43,8 @@ jobs:
 
           New-Item -ItemType Directory -Force $deployDir | Out-Null
           Copy-Item "$outputDir/demo_for_qt.exe" $deployDir
-          Copy-Item "$outputDir/*.dll" $deployDir
+          Copy-Item "bin/win64/*.dll" $deployDir
+          Copy-Item "demo/demo_for_windows/ffmpeg/bin/win64/*.dll" $deployDir
 
           windeployqt --release --compiler-runtime --no-translations `
             "$deployDir/demo_for_qt.exe"

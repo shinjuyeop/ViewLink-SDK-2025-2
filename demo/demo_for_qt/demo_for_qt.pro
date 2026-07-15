@@ -39,8 +39,10 @@ contains(QT_ARCH, x86_64){
     FfmpegDll = $$replace(FfmpegDll, /, \\)
     DllDst = $$replace(DESTDIR, /, \\)
 
-    QMAKE_PRE_LINK += $$QMAKE_COPY $$SDKDll $$DllDst && \
-                      $$QMAKE_COPY $$FfmpegDll $$DllDst
+    !contains(CONFIG, ci) {
+        QMAKE_PRE_LINK += $$QMAKE_COPY $$SDKDll $$DllDst && \
+                          $$QMAKE_COPY $$FfmpegDll $$DllDst
+    }
 }else{
     LIBS += -L$$PWD/../../lib/win32 -lViewLink \
             -L$$PWD/../demo_for_windows/ffmpeg/lib/win32 -lavformat -lavutil -lavcodec -lswresample -lswscale
@@ -52,8 +54,10 @@ contains(QT_ARCH, x86_64){
     FfmpegDll = $$replace(FfmpegDll, /, \\)
     DllDst = $$replace(DESTDIR, /, \\)
 
-    QMAKE_PRE_LINK += $$QMAKE_COPY $$SDKDll $$DllDst && \
-                      $$QMAKE_COPY $$FfmpegDll $$DllDst
+    !contains(CONFIG, ci) {
+        QMAKE_PRE_LINK += $$QMAKE_COPY $$SDKDll $$DllDst && \
+                          $$QMAKE_COPY $$FfmpegDll $$DllDst
+    }
 }
 }
 linux{
