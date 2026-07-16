@@ -83,12 +83,27 @@ private slots:
 
     void on_btnStopRecord_clicked();
 
+    void on_btnTurnTo_clicked();
+
+    void on_btnMotorOn_clicked();
+
+    void on_btnMotorOff_clicked();
+
+    void onTurnToPresetClicked();
+
+    void onTurnToMonitorTimeout();
+
 private:
     // initialize UI control
     void InitUI();
 	void appendSrtTelemetry(bool finalizePartialFrame = false);
 	void stopRecording(const QString& reasonCode, const QString& warningMessage = QString());
     void writeRecordMetadata();
+    bool hasFreshTelemetry() const;
+    void updateTurnToDeviceStatus();
+    void appendTurnToStatus(const QString& message);
+    void finishTurnToTest(const QString& result);
+    static double yawAngularError(double first, double second);
 
 private:
     Ui::Widget *ui;
@@ -112,6 +127,26 @@ private:
     QFile m_srtFileEO;
     QFile m_srtFileIR;
     int m_srtIndex;
+
+    // VLK_TurnTo diagnostic state
+    QTimer m_turnToTimer;
+    QElapsedTimer m_turnToElapsedTimer;
+    bool m_turnToActive;
+    bool m_turnToMotorOn;
+    bool m_turnToBeforeTelemetryAvailable;
+    bool m_turnToTelemetryReceived;
+    bool m_turnToYawMoved;
+    bool m_turnToPitchMoved;
+    bool m_turnToMovedAwayAfterReach;
+    double m_turnToTargetYaw;
+    double m_turnToTargetPitch;
+    double m_turnToBeforeYaw;
+    double m_turnToBeforePitch;
+    double m_turnToAfterYaw;
+    double m_turnToAfterPitch;
+    double m_turnToBestCombinedError;
+    qint64 m_turnToFirstWithinToleranceMs;
+    qint64 m_turnToLastDeviceStatusPollMs;
 };
 
 #endif // WIDGET_H

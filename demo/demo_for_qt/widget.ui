@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>949</width>
-    <height>669</height>
+    <width>1300</width>
+    <height>950</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -259,13 +259,13 @@
         <widget class="QWidget" name="widgetDevControl" native="true">
          <property name="minimumSize">
           <size>
-           <width>250</width>
+           <width>380</width>
            <height>0</height>
           </size>
          </property>
          <property name="maximumSize">
           <size>
-           <width>250</width>
+           <width>380</width>
            <height>16777215</height>
           </size>
          </property>
@@ -397,7 +397,229 @@
              </property>
             </spacer>
            </item>
-          </layout>
+         </layout>
+         </item>
+         <item>
+          <widget class="QGroupBox" name="groupTurnToTest">
+           <property name="title">
+            <string>VLK_TurnTo test</string>
+           </property>
+           <layout class="QVBoxLayout" name="verticalLayoutTurnTo">
+            <property name="spacing">
+             <number>4</number>
+            </property>
+            <item>
+             <layout class="QGridLayout" name="gridLayoutTurnToStatus">
+              <item row="0" column="0">
+               <widget class="QLabel" name="labelTurnToConnection">
+                <property name="text">
+                 <string>Connection:</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="1">
+               <widget class="QLabel" name="lbTurnToConnection">
+                <property name="text">
+                 <string>Not connected</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="0">
+               <widget class="QLabel" name="labelMotorStatus">
+                <property name="text">
+                 <string>Motor:</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="1">
+               <widget class="QLabel" name="lbMotorStatus">
+                <property name="text">
+                 <string>Unknown</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="2">
+               <widget class="QPushButton" name="btnMotorOn">
+                <property name="text">
+                 <string>Motor ON</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="3">
+               <widget class="QPushButton" name="btnMotorOff">
+                <property name="text">
+                 <string>Motor OFF</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="0">
+               <widget class="QLabel" name="labelFollowStatus">
+                <property name="text">
+                 <string>Follow:</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="1">
+               <widget class="QLabel" name="lbFollowStatus">
+                <property name="text">
+                 <string>Unknown</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <layout class="QFormLayout" name="formLayoutTurnToTarget">
+              <item row="0" column="0">
+               <widget class="QLabel" name="labelTargetYaw">
+                <property name="text">
+                 <string>Target Yaw:</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="1">
+               <widget class="QDoubleSpinBox" name="spinTargetYaw">
+                <property name="decimals">
+                 <number>2</number>
+                </property>
+                <property name="minimum">
+                 <double>-180.000000000000000</double>
+                </property>
+                <property name="maximum">
+                 <double>180.000000000000000</double>
+                </property>
+                <property name="singleStep">
+                 <double>1.000000000000000</double>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="0">
+               <widget class="QLabel" name="labelTargetPitch">
+                <property name="text">
+                 <string>Target Pitch:</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="1">
+               <widget class="QDoubleSpinBox" name="spinTargetPitch">
+                <property name="decimals">
+                 <number>2</number>
+                </property>
+                <property name="minimum">
+                 <double>-90.000000000000000</double>
+                </property>
+                <property name="maximum">
+                 <double>90.000000000000000</double>
+                </property>
+                <property name="singleStep">
+                 <double>1.000000000000000</double>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <widget class="QLabel" name="labelPresetHint">
+              <property name="text">
+               <string>Presets (set values only):</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <layout class="QGridLayout" name="gridLayoutTurnToPresets">
+              <item row="0" column="0">
+               <widget class="QPushButton" name="btnPresetCenter">
+                <property name="text">
+                 <string>Center</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="1">
+               <widget class="QPushButton" name="btnPresetPitchMinus30">
+                <property name="text">
+                 <string>Pitch -30</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="2">
+               <widget class="QPushButton" name="btnPresetPitch0">
+                <property name="text">
+                 <string>Pitch 0</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="3">
+               <widget class="QPushButton" name="btnPresetPitchPlus30">
+                <property name="text">
+                 <string>Pitch +30</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="1">
+               <widget class="QPushButton" name="btnPresetYawMinus30">
+                <property name="text">
+                 <string>Yaw -30</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="2">
+               <widget class="QPushButton" name="btnPresetYaw0">
+                <property name="text">
+                 <string>Yaw 0</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="3">
+               <widget class="QPushButton" name="btnPresetYawPlus30">
+                <property name="text">
+                 <string>Yaw +30</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <widget class="QPushButton" name="btnTurnTo">
+              <property name="text">
+               <string>Turn To</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="lbTurnToResult">
+              <property name="text">
+               <string>Idle</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPlainTextEdit" name="txtTurnToStatus">
+              <property name="maximumSize">
+               <size>
+                <width>16777215</width>
+                <height>115</height>
+               </size>
+              </property>
+              <property name="readOnly">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="labelTurnToSafety">
+              <property name="text">
+               <string>Safety: neutralize physical pitch/yaw controls; verify Follow mode; connect only this demo; keep the gimbal area clear. Observe physical motion because telemetry alone cannot identify cases F/G.</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
          </item>
          <item>
           <layout class="QHBoxLayout" name="horizontalLayout_7">
@@ -486,6 +708,12 @@
          </item>
          <item>
           <widget class="QTextBrowser" name="textBrowser">
+           <property name="maximumSize">
+            <size>
+             <width>16777215</width>
+             <height>65</height>
+            </size>
+           </property>
            <property name="html">
             <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;

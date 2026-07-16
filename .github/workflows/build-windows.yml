@@ -23,7 +23,7 @@ jobs:
           tools: "tools_mingw,qt.tools.win64_mingw810"
           cache: true
 
-      - name: Configure and build
+      - name: Configure and build Release
         shell: pwsh
         working-directory: demo/demo_for_qt
         run: |
@@ -39,7 +39,7 @@ jobs:
         shell: pwsh
         run: |
           $outputDir = "demo/demo_for_qt/bin/win64"
-          $deployDir = "deploy-ci/demo_for_qt_win64"
+          $deployDir = "deploy-ci/demo_for_qt_win64_release"
           $windeployqt = Join-Path $env:QT_ROOT_DIR "bin/windeployqt.exe"
           $platformPlugin = Join-Path $env:QT_ROOT_DIR "plugins/platforms/qwindows.dll"
 
@@ -84,14 +84,14 @@ jobs:
         shell: pwsh
         run: |
           Compress-Archive `
-            -Path "deploy-ci/demo_for_qt_win64/*" `
-            -DestinationPath "deploy-ci/demo_for_qt_win64.zip" `
+            -Path "deploy-ci/demo_for_qt_win64_release/*" `
+            -DestinationPath "deploy-ci/demo_for_qt_win64_release.zip" `
             -Force
 
       - name: Upload Windows package
         uses: actions/upload-artifact@v4
         with:
-          name: demo_for_qt-win64
-          path: deploy-ci/demo_for_qt_win64.zip
+          name: demo_for_qt_win64_release
+          path: deploy-ci/demo_for_qt_win64_release.zip
           if-no-files-found: error
           retention-days: 30

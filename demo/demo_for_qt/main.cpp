@@ -7,7 +7,7 @@ int main(int argc, char *argv[])
     QApplication a(argc, argv);
 
     // print SDK Version
-    qDebug() << "ViewLink SDK Version: " << GetSDKVersion();
+    qInfo() << "ViewLink SDK Version: " << GetSDKVersion();
 
     // initialize SDK
     VLK_Init();

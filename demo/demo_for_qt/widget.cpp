@@ -9,13 +9,22 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QMessageBox>
+#include <QPushButton>
 #include <QSaveFile>
 #include <QStringList>
 #include <QTimer>
 #include <cmath>
+#include <limits>
 
 namespace {
 const qint64 kSrtFrameRate = 30;
+const double kTurnToYawTolerance = 1.0;
+const double kTurnToPitchTolerance = 1.0;
+const double kTurnToMovementThreshold = 0.5;
+const qint64 kTurnToTimeoutMs = 10000;
+const qint64 kTurnToStableMs = 1000;
+const int kTurnToMonitorIntervalMs = 200;
+const qint64 kTurnToDeviceStatusPollMs = 1000;
 
 QString formatDmsCoordinate(double coordinate, bool latitude)
 {
@@ -51,7 +60,23 @@ Widget::Widget(QWidget *parent) :
     m_deviceConnected(false),
     m_hasTelemetry(false),
     m_previousSrtMs(0),
-    m_srtIndex(1)
+    m_srtIndex(1),
+    m_turnToActive(false),
+    m_turnToMotorOn(false),
+    m_turnToBeforeTelemetryAvailable(false),
+    m_turnToTelemetryReceived(false),
+    m_turnToYawMoved(false),
+    m_turnToPitchMoved(false),
+    m_turnToMovedAwayAfterReach(false),
+    m_turnToTargetYaw(0.0),
+    m_turnToTargetPitch(0.0),
+    m_turnToBeforeYaw(0.0),
+    m_turnToBeforePitch(0.0),
+    m_turnToAfterYaw(0.0),
+    m_turnToAfterPitch(0.0),
+    m_turnToBestCombinedError(0.0),
+    m_turnToFirstWithinToleranceMs(-1),
+    m_turnToLastDeviceStatusPollMs(0)
 {
     memset(&m_latestTelemetry, 0, sizeof(m_latestTelemetry));
     ui->setupUi(this);
@@ -64,6 +89,7 @@ Widget::Widget(QWidget *parent) :
     connect(this, SIGNAL(SignalDeviceConfig(VLK_DEV_CONFIG)), this, SLOT(onSlotDeviceConfig(VLK_DEV_CONFIG)));
     connect(this, SIGNAL(SignalDeviceTelemetry(VLK_DEV_TELEMETRY)), this, SLOT(onSlotDeviceTelemetry(VLK_DEV_TELEMETRY)));
     connect(&m_srtTimer, SIGNAL(timeout()), this, SLOT(writeSrtTelemetry()));
+    connect(&m_turnToTimer, SIGNAL(timeout()), this, SLOT(onTurnToMonitorTimeout()));
     m_srtTimer.setTimerType(Qt::PreciseTimer);
 
     InitUI();
@@ -127,6 +153,17 @@ void Widget::InitUI()
     // Set recording button initial states
     ui->btnStartRecord->setEnabled(true);
     ui->btnStopRecord->setEnabled(false);
+
+    connect(ui->btnPresetCenter, SIGNAL(clicked()), this, SLOT(onTurnToPresetClicked()));
+    connect(ui->btnPresetPitchMinus30, SIGNAL(clicked()), this, SLOT(onTurnToPresetClicked()));
+    connect(ui->btnPresetPitch0, SIGNAL(clicked()), this, SLOT(onTurnToPresetClicked()));
+    connect(ui->btnPresetPitchPlus30, SIGNAL(clicked()), this, SLOT(onTurnToPresetClicked()));
+    connect(ui->btnPresetYawMinus30, SIGNAL(clicked()), this, SLOT(onTurnToPresetClicked()));
+    connect(ui->btnPresetYaw0, SIGNAL(clicked()), this, SLOT(onTurnToPresetClicked()));
+    connect(ui->btnPresetYawPlus30, SIGNAL(clicked()), this, SLOT(onTurnToPresetClicked()));
+
+    appendTurnToStatus(tr("Ready. Preset buttons only fill values; press Turn To to send."));
+    updateTurnToDeviceStatus();
 }
 
 int Widget::VLK_ConnStatusCallback(int iConnStatus, const char* szMessage, int iMsgLen, void* pUserParam)
@@ -314,6 +351,7 @@ void Widget::onSlotConnectionStatus(int iConnStatus, const QString& strMessage)
     {
         qCritical() << "unknown connection status: " << iConnStatus;
     }
+    updateTurnToDeviceStatus();
 }
 
 void Widget::onSlotDeviceModel(VLK_DEV_MODEL model)
@@ -332,15 +370,327 @@ void Widget::onSlotDeviceTelemetry(VLK_DEV_TELEMETRY telemetry)
     m_hasTelemetry = true;
     m_lastTelemetryTimer.start();
 
-    QString::number(telemetry.dPitch);
-    ui->lbYaw->setText(QString::number(telemetry.dYaw));
-    ui->lbPitch->setText(QString::number(telemetry.dPitch));
+    if (m_turnToActive) {
+        m_turnToTelemetryReceived = true;
+        m_turnToAfterYaw = telemetry.dYaw;
+        m_turnToAfterPitch = telemetry.dPitch;
+    }
+
+    ui->lbYaw->setText(QString::number(telemetry.dYaw, 'f', 2));
+    ui->lbPitch->setText(QString::number(telemetry.dPitch, 'f', 2));
     ui->lbTargetLat->setText(QString::number(telemetry.dTargetLat));
     ui->lbTargetLng->setText(QString::number(telemetry.dTargetLng));
     ui->lbTargetAlt->setText(QString::number(telemetry.dTargetAlt));
     ui->lbZoom->setText(QString::number(telemetry.dZoomMagTimes));
     ui->lbLaserDistance->setText(QString::number(telemetry.sLaserDistance));
 
+}
+
+bool Widget::hasFreshTelemetry() const
+{
+    return m_hasTelemetry
+        && m_lastTelemetryTimer.isValid()
+        && m_lastTelemetryTimer.elapsed() <= 2000;
+}
+
+double Widget::yawAngularError(double first, double second)
+{
+    double difference = std::fmod(std::fabs(first - second), 360.0);
+    if (difference > 180.0) {
+        difference = 360.0 - difference;
+    }
+    return difference;
+}
+
+void Widget::appendTurnToStatus(const QString& message)
+{
+    const QString timestamp = QDateTime::currentDateTime().toString("HH:mm:ss.zzz");
+    ui->txtTurnToStatus->appendPlainText(QString("[%1] %2").arg(timestamp, message));
+    qInfo().noquote() << "[TurnTo]" << message;
+}
+
+void Widget::updateTurnToDeviceStatus()
+{
+    const bool connected = !!VLK_IsConnected();
+    m_deviceConnected = connected;
+    if (!!VLK_IsTCPConnected()) {
+        ui->lbTurnToConnection->setText(tr("TCP connected"));
+    } else if (!!VLK_IsSerialPortConnected()) {
+        ui->lbTurnToConnection->setText(tr("Serial connected"));
+    } else {
+        ui->lbTurnToConnection->setText(tr("Not connected"));
+    }
+
+    if (!connected) {
+        m_turnToMotorOn = false;
+        ui->lbMotorStatus->setText(tr("Unknown"));
+        ui->lbFollowStatus->setText(tr("Unknown"));
+        return;
+    }
+
+    m_turnToMotorOn = !!VLK_IsMotorOn();
+    ui->lbMotorStatus->setText(m_turnToMotorOn ? tr("ON") : tr("OFF"));
+    ui->lbFollowStatus->setText(!!VLK_IsFollowMode() ? tr("Enabled") : tr("Disabled"));
+}
+
+void Widget::finishTurnToTest(const QString& result)
+{
+    if (!m_turnToActive) {
+        return;
+    }
+
+    const QString before = m_turnToBeforeTelemetryAvailable
+        ? QString("yaw=%1, pitch=%2")
+            .arg(m_turnToBeforeYaw, 0, 'f', 2)
+            .arg(m_turnToBeforePitch, 0, 'f', 2)
+        : QString("N/A");
+    const QString after = m_turnToTelemetryReceived
+        ? QString("yaw=%1, pitch=%2")
+            .arg(m_turnToAfterYaw, 0, 'f', 2)
+            .arg(m_turnToAfterPitch, 0, 'f', 2)
+        : QString("N/A");
+
+    const QString summary = QString(
+        "TurnTo result\n"
+        "Requested: yaw=%1, pitch=%2\n"
+        "Before: %3\n"
+        "After: %4\n"
+        "Result: %5")
+        .arg(m_turnToTargetYaw, 0, 'f', 2)
+        .arg(m_turnToTargetPitch, 0, 'f', 2)
+        .arg(before)
+        .arg(after)
+        .arg(result);
+
+    m_turnToActive = false;
+    m_turnToTimer.stop();
+    ui->btnTurnTo->setEnabled(true);
+    ui->lbTurnToResult->setText(result);
+    appendTurnToStatus(summary);
+}
+
+void Widget::on_btnTurnTo_clicked()
+{
+    updateTurnToDeviceStatus();
+    if (!m_deviceConnected) {
+        ui->lbTurnToResult->setText(tr("Not connected"));
+        appendTurnToStatus(tr("Not connected: VLK_TurnTo was not called."));
+        QMessageBox::warning(this, tr("Turn To unavailable"),
+            tr("Connect the gimbal over TCP or serial before testing Turn To."));
+        return;
+    }
+
+    if (!m_turnToMotorOn) {
+        ui->lbTurnToResult->setText(tr("Motor off"));
+        appendTurnToStatus(tr("Motor off: VLK_TurnTo was not called."));
+        QMessageBox::warning(this, tr("Turn To unavailable"),
+            tr("The motor is OFF. Turn it on explicitly, then retry."));
+        return;
+    }
+
+    const double targetYaw = ui->spinTargetYaw->value();
+    const double targetPitch = ui->spinTargetPitch->value();
+    if (!std::isfinite(targetYaw) || !std::isfinite(targetPitch)
+        || targetYaw < VLK_YAW_MIN || targetYaw > VLK_YAW_MAX
+        || targetPitch < VLK_PITCH_MIN || targetPitch > VLK_PITCH_MAX) {
+        ui->lbTurnToResult->setText(tr("Invalid input"));
+        appendTurnToStatus(tr("Invalid yaw/pitch input: VLK_TurnTo was not called."));
+        QMessageBox::warning(this, tr("Invalid Turn To target"),
+            tr("Yaw must be -180..180 and pitch must be -90..90."));
+        return;
+    }
+
+    m_turnToTargetYaw = targetYaw;
+    m_turnToTargetPitch = targetPitch;
+    m_turnToBeforeTelemetryAvailable = hasFreshTelemetry();
+    if (m_turnToBeforeTelemetryAvailable) {
+        m_turnToBeforeYaw = m_latestTelemetry.dYaw;
+        m_turnToBeforePitch = m_latestTelemetry.dPitch;
+    }
+    m_turnToAfterYaw = m_turnToBeforeYaw;
+    m_turnToAfterPitch = m_turnToBeforePitch;
+    m_turnToTelemetryReceived = false;
+    m_turnToYawMoved = false;
+    m_turnToPitchMoved = false;
+    m_turnToMovedAwayAfterReach = false;
+    m_turnToBestCombinedError = std::numeric_limits<double>::max();
+    m_turnToFirstWithinToleranceMs = -1;
+    m_turnToLastDeviceStatusPollMs = 0;
+    m_turnToActive = true;
+    m_turnToElapsedTimer.start();
+    m_turnToTimer.start(kTurnToMonitorIntervalMs);
+    ui->btnTurnTo->setEnabled(false);
+    ui->lbTurnToResult->setText(tr("Command sent; waiting for telemetry"));
+
+    const QString beforeText = m_turnToBeforeTelemetryAvailable
+        ? QString("yaw=%1, pitch=%2")
+            .arg(m_turnToBeforeYaw, 0, 'f', 2)
+            .arg(m_turnToBeforePitch, 0, 'f', 2)
+        : QString("N/A");
+    // VLK_TurnTo returns void. Completion is decided only from later telemetry.
+    VLK_TurnTo(targetYaw, targetPitch);
+    appendTurnToStatus(QString(
+        "TurnTo command\nRequested: yaw=%1, pitch=%2\nBefore: %3\nCommand sent")
+        .arg(targetYaw, 0, 'f', 2)
+        .arg(targetPitch, 0, 'f', 2)
+        .arg(beforeText));
+}
+
+void Widget::on_btnMotorOn_clicked()
+{
+    updateTurnToDeviceStatus();
+    if (!m_deviceConnected) {
+        appendTurnToStatus(tr("Not connected: motor ON command was not sent."));
+        QMessageBox::warning(this, tr("Motor control unavailable"),
+            tr("Connect the gimbal before changing motor state."));
+        return;
+    }
+    VLK_SwitchMotor(1);
+    appendTurnToStatus(tr("Motor ON command sent; verify the refreshed status."));
+    updateTurnToDeviceStatus();
+}
+
+void Widget::on_btnMotorOff_clicked()
+{
+    updateTurnToDeviceStatus();
+    if (!m_deviceConnected) {
+        appendTurnToStatus(tr("Not connected: motor OFF command was not sent."));
+        QMessageBox::warning(this, tr("Motor control unavailable"),
+            tr("Connect the gimbal before changing motor state."));
+        return;
+    }
+    if (m_turnToActive) {
+        finishTurnToTest(tr("Motor off by user"));
+    }
+    VLK_SwitchMotor(0);
+    appendTurnToStatus(tr("Motor OFF command sent; verify the refreshed status."));
+    updateTurnToDeviceStatus();
+}
+
+void Widget::onTurnToPresetClicked()
+{
+    QPushButton* button = qobject_cast<QPushButton*>(sender());
+    if (button == ui->btnPresetCenter) {
+        ui->spinTargetYaw->setValue(0.0);
+        ui->spinTargetPitch->setValue(0.0);
+    } else if (button == ui->btnPresetPitchMinus30) {
+        ui->spinTargetPitch->setValue(-30.0);
+    } else if (button == ui->btnPresetPitch0) {
+        ui->spinTargetPitch->setValue(0.0);
+    } else if (button == ui->btnPresetPitchPlus30) {
+        ui->spinTargetPitch->setValue(30.0);
+    } else if (button == ui->btnPresetYawMinus30) {
+        ui->spinTargetYaw->setValue(-30.0);
+    } else if (button == ui->btnPresetYaw0) {
+        ui->spinTargetYaw->setValue(0.0);
+    } else if (button == ui->btnPresetYawPlus30) {
+        ui->spinTargetYaw->setValue(30.0);
+    }
+}
+
+void Widget::onTurnToMonitorTimeout()
+{
+    if (!m_turnToActive) {
+        return;
+    }
+
+    const qint64 elapsedMs = m_turnToElapsedTimer.elapsed();
+    if (elapsedMs - m_turnToLastDeviceStatusPollMs >= kTurnToDeviceStatusPollMs) {
+        updateTurnToDeviceStatus();
+        m_turnToLastDeviceStatusPollMs = elapsedMs;
+    }
+    if (!m_deviceConnected) {
+        finishTurnToTest(tr("Not connected"));
+        return;
+    }
+    if (!m_turnToMotorOn) {
+        finishTurnToTest(tr("Motor off"));
+        return;
+    }
+
+    if (m_turnToTelemetryReceived && !hasFreshTelemetry()) {
+        ui->lbTurnToResult->setText(tr("No telemetry: last update is stale"));
+        if (elapsedMs >= kTurnToTimeoutMs) {
+            finishTurnToTest(tr("No telemetry: updates stopped after the command (if physical motion continued, case G)"));
+        }
+        return;
+    }
+    if (m_turnToTelemetryReceived) {
+        const double yawError = yawAngularError(m_turnToAfterYaw, m_turnToTargetYaw);
+        const double pitchError = std::fabs(m_turnToAfterPitch - m_turnToTargetPitch);
+        const double combinedError = yawError + pitchError;
+        m_turnToBestCombinedError = qMin(m_turnToBestCombinedError, combinedError);
+
+        if (m_turnToBeforeTelemetryAvailable) {
+            m_turnToYawMoved = m_turnToYawMoved
+                || yawAngularError(m_turnToAfterYaw, m_turnToBeforeYaw) >= kTurnToMovementThreshold;
+            m_turnToPitchMoved = m_turnToPitchMoved
+                || std::fabs(m_turnToAfterPitch - m_turnToBeforePitch) >= kTurnToMovementThreshold;
+        }
+
+        const bool withinTolerance = yawError <= kTurnToYawTolerance
+            && pitchError <= kTurnToPitchTolerance;
+        if (withinTolerance) {
+            if (m_turnToFirstWithinToleranceMs < 0) {
+                m_turnToFirstWithinToleranceMs = elapsedMs;
+            }
+            ui->lbTurnToResult->setText(QString(
+                "Target reached; verifying stability (%1 ms) | yaw error=%2, pitch error=%3")
+                .arg(elapsedMs - m_turnToFirstWithinToleranceMs)
+                .arg(yawError, 0, 'f', 2)
+                .arg(pitchError, 0, 'f', 2));
+            if (elapsedMs - m_turnToFirstWithinToleranceMs >= kTurnToStableMs) {
+                finishTurnToTest(m_turnToMovedAwayAfterReach
+                    ? tr("Target reached after moving away once; check for external controller override")
+                    : tr("Target reached"));
+                return;
+            }
+        } else {
+            if (m_turnToFirstWithinToleranceMs >= 0) {
+                m_turnToMovedAwayAfterReach = true;
+                m_turnToFirstWithinToleranceMs = -1;
+            }
+            ui->lbTurnToResult->setText(QString(
+                "Moving | current yaw=%1, pitch=%2 | error yaw=%3, pitch=%4")
+                .arg(m_turnToAfterYaw, 0, 'f', 2)
+                .arg(m_turnToAfterPitch, 0, 'f', 2)
+                .arg(yawError, 0, 'f', 2)
+                .arg(pitchError, 0, 'f', 2));
+        }
+    } else {
+        ui->lbTurnToResult->setText(tr("Command sent; waiting for telemetry"));
+    }
+
+    if (elapsedMs < kTurnToTimeoutMs) {
+        return;
+    }
+
+    if (!m_turnToTelemetryReceived) {
+        finishTurnToTest(tr("No telemetry (if physical motion occurred, case G)"));
+        return;
+    }
+
+    QString result;
+    if (m_turnToYawMoved && m_turnToPitchMoved) {
+        result = tr("Timeout: yaw and pitch moved but target was not reached");
+    } else if (m_turnToYawMoved) {
+        result = tr("Timeout: yaw moved; pitch did not move");
+    } else if (m_turnToPitchMoved) {
+        result = tr("Timeout: pitch moved; yaw did not move");
+    } else {
+        result = m_turnToBeforeTelemetryAvailable
+            ? tr("Timeout: yaw and pitch did not move")
+            : tr("Timeout: movement could not be determined without initial telemetry");
+    }
+
+    const double finalCombinedError =
+        yawAngularError(m_turnToAfterYaw, m_turnToTargetYaw)
+        + std::fabs(m_turnToAfterPitch - m_turnToTargetPitch);
+    if (m_turnToMovedAwayAfterReach
+        || m_turnToBestCombinedError + 4.0 < finalCombinedError) {
+        result += tr("; possible external controller override (moved toward target, then away)");
+    }
+    finishTurnToTest(result);
 }
 
 void Widget::writeSrtTelemetry()
