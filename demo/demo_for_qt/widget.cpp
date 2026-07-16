@@ -26,6 +26,7 @@ const qint64 kTurnToStableMs = 1000;
 const int kTurnToMonitorIntervalMs = 200;
 const qint64 kTurnToDeviceStatusPollMs = 1000;
 const int kTurnToPostTelemetryStatusDelayMs = 500;
+const int kManualMoveRepeatIntervalMs = 100;
 
 QString formatDmsCoordinate(double coordinate, bool latitude)
 {
@@ -57,6 +58,9 @@ QString formatDmsCoordinate(double coordinate, bool latitude)
 Widget::Widget(QWidget *parent) :
     QWidget(parent),
     ui(new Ui::Widget),
+    m_manualHorizontalSpeed(0),
+    m_manualVerticalSpeed(0),
+    m_manualMoveActive(false),
     m_bIsRecording(false),
     m_deviceConnected(false),
     m_hasTelemetry(false),
@@ -98,6 +102,7 @@ Widget::Widget(QWidget *parent) :
         this, SLOT(onSlotDeviceTelemetry(VLK_DEV_TELEMETRY)), Qt::QueuedConnection);
     connect(&m_srtTimer, SIGNAL(timeout()), this, SLOT(writeSrtTelemetry()));
     connect(&m_turnToTimer, SIGNAL(timeout()), this, SLOT(onTurnToMonitorTimeout()));
+    connect(&m_manualMoveTimer, SIGNAL(timeout()), this, SLOT(repeatManualMove()));
     m_srtTimer.setTimerType(Qt::PreciseTimer);
 
     InitUI();
@@ -346,6 +351,8 @@ void Widget::onSlotConnectionStatus(int iConnStatus, const QString& strMessage)
         m_hasTelemetry = false;
         m_turnToMotorOn = false;
         m_turnToStatusRefreshPending = false;
+        m_manualMoveTimer.stop();
+        m_manualMoveActive = false;
         qDebug() << "TCP Gimbal disconnected !!!";
         ui->btnConnectTCP->setText("Connect");
         ui->lbTurnToConnection->setText(tr("Not connected"));
@@ -369,6 +376,8 @@ void Widget::onSlotConnectionStatus(int iConnStatus, const QString& strMessage)
         m_hasTelemetry = false;
         m_turnToMotorOn = false;
         m_turnToStatusRefreshPending = false;
+        m_manualMoveTimer.stop();
+        m_manualMoveActive = false;
         qDebug() << "Serial port Gimbal disconnected !!!";
         ui->btnConnctSerialPort->setText(tr("Connect"));
         ui->lbTurnToConnection->setText(tr("Not connected"));
@@ -510,6 +519,11 @@ void Widget::finishTurnToTest(const QString& result)
 
 void Widget::on_btnTurnTo_clicked()
 {
+    stopManualMove();
+    if (m_turnToActive) {
+        finishTurnToTest(tr("Superseded by repeated Turn To command"));
+    }
+
     updateTurnToDeviceStatus();
     if (!m_deviceConnected) {
         ui->lbTurnToResult->setText(tr("Not connected"));
@@ -566,8 +580,7 @@ void Widget::on_btnTurnTo_clicked()
     m_turnToActive = true;
     m_turnToElapsedTimer.start();
     m_turnToTimer.start(kTurnToMonitorIntervalMs);
-    ui->btnTurnTo->setEnabled(false);
-    ui->lbTurnToResult->setText(tr("Command sent; waiting for telemetry"));
+    ui->lbTurnToResult->setText(tr("Command sent; press Turn To again to resend"));
 
     const QString beforeText = m_turnToBeforeTelemetryAvailable
         ? QString("yaw=%1, pitch=%2")
@@ -935,32 +948,69 @@ void Widget::on_btnOpenUSBVideo_clicked()
 }
 
 
+void Widget::startManualMove(short horizontalSpeed, short verticalSpeed)
+{
+    if (!m_deviceConnected) {
+        return;
+    }
+
+    m_manualHorizontalSpeed = horizontalSpeed;
+    m_manualVerticalSpeed = verticalSpeed;
+    m_manualMoveActive = true;
+    VLK_Move(m_manualHorizontalSpeed, m_manualVerticalSpeed);
+    m_manualMoveTimer.start(kManualMoveRepeatIntervalMs);
+}
+
+void Widget::repeatManualMove()
+{
+    if (!m_manualMoveActive || !m_deviceConnected) {
+        m_manualMoveTimer.stop();
+        m_manualMoveActive = false;
+        return;
+    }
+    VLK_Move(m_manualHorizontalSpeed, m_manualVerticalSpeed);
+}
+
+void Widget::stopManualMove()
+{
+    if (!m_manualMoveActive) {
+        return;
+    }
+
+    m_manualMoveActive = false;
+    m_manualMoveTimer.stop();
+    if (m_deviceConnected) {
+        VLK_Stop();
+    }
+}
+
 void Widget::on_btnUp_pressed()
 {
     double dSpeedRate = (double)ui->SliderMoveSpeed->value() / (double)ui->SliderMoveSpeed->maximum();
     double dScaleSpeed = (double)VLK_MAX_PITCH_SPEED * dSpeedRate;
-    VLK_Move(0, (short)dScaleSpeed);
+    startManualMove(0, static_cast<short>(dScaleSpeed));
 }
 
 void Widget::on_btnUp_released()
 {
-    VLK_Stop();
+    stopManualMove();
 }
 
 void Widget::on_btnLeft_pressed()
 {
     double dSpeedRate = (double)ui->SliderMoveSpeed->value() / (double)ui->SliderMoveSpeed->maximum();
     double dScaleSpeed = (double)VLK_MAX_YAW_SPEED * dSpeedRate * -1;
-    VLK_Move(dScaleSpeed, 0);
+    startManualMove(static_cast<short>(dScaleSpeed), 0);
 }
 
 void Widget::on_btnLeft_released()
 {
-    VLK_Stop();
+    stopManualMove();
 }
 
 void Widget::on_btnHome_clicked()
 {
+    stopManualMove();
     VLK_Home();
 }
 
@@ -968,24 +1018,24 @@ void Widget::on_btnRight_pressed()
 {
     double dSpeedRate = (double)ui->SliderMoveSpeed->value() / (double)ui->SliderMoveSpeed->maximum();
     double dScaleSpeed = (double)VLK_MAX_YAW_SPEED * dSpeedRate;
-    VLK_Move(dScaleSpeed, 0);
+    startManualMove(static_cast<short>(dScaleSpeed), 0);
 }
 
 void Widget::on_btnRight_released()
 {
-    VLK_Stop();
+    stopManualMove();
 }
 
 void Widget::on_btnDown_pressed()
 {
     double dSpeedRate = (double)ui->SliderMoveSpeed->value() / (double)ui->SliderMoveSpeed->maximum();
     double dScaleSpeed = (double)VLK_MAX_PITCH_SPEED * dSpeedRate * -1;
-    VLK_Move(0, dScaleSpeed);
+    startManualMove(0, static_cast<short>(dScaleSpeed));
 }
 
 void Widget::on_btnDown_released()
 {
-    VLK_Stop();
+    stopManualMove();
 }
 
 void Widget::on_cmbImageSensor_activated(int index)

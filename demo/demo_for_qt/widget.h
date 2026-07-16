@@ -95,6 +95,8 @@ private slots:
 
     void refreshTurnToDeviceStatusAfterConnect();
 
+    void repeatManualMove();
+
 private:
     // initialize UI control
     void InitUI();
@@ -105,6 +107,8 @@ private:
     void updateTurnToDeviceStatus();
     void appendTurnToStatus(const QString& message);
     void finishTurnToTest(const QString& result);
+    void startManualMove(short horizontalSpeed, short verticalSpeed);
+    void stopManualMove();
     static double yawAngularError(double first, double second);
 
 private:
@@ -113,6 +117,12 @@ private:
     CVideoObjNetwork m_VideoObjNetworkEO;
     CVideoObjNetwork m_VideoObjNetworkIR;
     CVideoObjUSBCamera m_VideoObjUSBCamera;
+
+    // Manual movement command refresh
+    QTimer m_manualMoveTimer;
+    short m_manualHorizontalSpeed;
+    short m_manualVerticalSpeed;
+    bool m_manualMoveActive;
 
     // Recording and SRT variables
     bool m_bIsRecording;
