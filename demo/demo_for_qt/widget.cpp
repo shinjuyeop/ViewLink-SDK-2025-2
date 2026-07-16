@@ -25,6 +25,7 @@ const qint64 kTurnToTimeoutMs = 10000;
 const qint64 kTurnToStableMs = 1000;
 const int kTurnToMonitorIntervalMs = 200;
 const qint64 kTurnToDeviceStatusPollMs = 1000;
+const int kTurnToPostTelemetryStatusDelayMs = 500;
 
 QString formatDmsCoordinate(double coordinate, bool latitude)
 {
@@ -63,6 +64,7 @@ Widget::Widget(QWidget *parent) :
     m_srtIndex(1),
     m_turnToActive(false),
     m_turnToMotorOn(false),
+    m_turnToStatusRefreshPending(false),
     m_turnToBeforeTelemetryAvailable(false),
     m_turnToTelemetryReceived(false),
     m_turnToYawMoved(false),
@@ -84,10 +86,16 @@ Widget::Widget(QWidget *parent) :
     qRegisterMetaType<VLK_DEV_CONFIG>("VLK_DEV_CONFIG");
     qRegisterMetaType<VLK_DEV_TELEMETRY>("VLK_DEV_TELEMETRY");
 
-    connect(this, SIGNAL(SignalConnectionStatus(int, const QString&)), this, SLOT(onSlotConnectionStatus(int, const QString&)));
-    connect(this, SIGNAL(SignalDeviceModel(VLK_DEV_MODEL)), this, SLOT(onSlotDeviceModel(VLK_DEV_MODEL)));
-    connect(this, SIGNAL(SignalDeviceConfig(VLK_DEV_CONFIG)), this, SLOT(onSlotDeviceConfig(VLK_DEV_CONFIG)));
-    connect(this, SIGNAL(SignalDeviceTelemetry(VLK_DEV_TELEMETRY)), this, SLOT(onSlotDeviceTelemetry(VLK_DEV_TELEMETRY)));
+    // SDK callbacks can originate on SDK worker threads. Always queue UI work so
+    // no SDK API is re-entered before the originating callback has returned.
+    connect(this, SIGNAL(SignalConnectionStatus(int, const QString&)),
+        this, SLOT(onSlotConnectionStatus(int, const QString&)), Qt::QueuedConnection);
+    connect(this, SIGNAL(SignalDeviceModel(VLK_DEV_MODEL)),
+        this, SLOT(onSlotDeviceModel(VLK_DEV_MODEL)), Qt::QueuedConnection);
+    connect(this, SIGNAL(SignalDeviceConfig(VLK_DEV_CONFIG)),
+        this, SLOT(onSlotDeviceConfig(VLK_DEV_CONFIG)), Qt::QueuedConnection);
+    connect(this, SIGNAL(SignalDeviceTelemetry(VLK_DEV_TELEMETRY)),
+        this, SLOT(onSlotDeviceTelemetry(VLK_DEV_TELEMETRY)), Qt::QueuedConnection);
     connect(&m_srtTimer, SIGNAL(timeout()), this, SLOT(writeSrtTelemetry()));
     connect(&m_turnToTimer, SIGNAL(timeout()), this, SLOT(onTurnToMonitorTimeout()));
     m_srtTimer.setTimerType(Qt::PreciseTimer);
@@ -324,34 +332,53 @@ void Widget::onSlotConnectionStatus(int iConnStatus, const QString& strMessage)
     if (iConnStatus == VLK_CONN_STATUS_TCP_CONNECTED)
     {
        m_deviceConnected = true;
+       m_turnToMotorOn = false;
+       m_turnToStatusRefreshPending = true;
        qDebug() << "TCP Gimbal connected !!!";
        ui->btnConnectTCP->setText(tr("Disconnect"));
+       ui->lbTurnToConnection->setText(tr("TCP connected"));
+       ui->lbMotorStatus->setText(tr("Waiting for telemetry"));
+       ui->lbFollowStatus->setText(tr("Waiting for telemetry"));
     }
     else if (iConnStatus == VLK_CONN_STATUS_TCP_DISCONNECTED)
     {
         m_deviceConnected = false;
         m_hasTelemetry = false;
+        m_turnToMotorOn = false;
+        m_turnToStatusRefreshPending = false;
         qDebug() << "TCP Gimbal disconnected !!!";
         ui->btnConnectTCP->setText("Connect");
+        ui->lbTurnToConnection->setText(tr("Not connected"));
+        ui->lbMotorStatus->setText(tr("Unknown"));
+        ui->lbFollowStatus->setText(tr("Unknown"));
     }
     else if (iConnStatus == VLK_CONN_STATUS_SERIAL_PORT_CONNECTED)
     {
         m_deviceConnected = true;
+        m_turnToMotorOn = false;
+        m_turnToStatusRefreshPending = true;
         qDebug() << "Serial port Gimbal connected !!!";
         ui->btnConnctSerialPort->setText(tr("Disconnect"));
+        ui->lbTurnToConnection->setText(tr("Serial connected"));
+        ui->lbMotorStatus->setText(tr("Waiting for telemetry"));
+        ui->lbFollowStatus->setText(tr("Waiting for telemetry"));
     }
     else if (iConnStatus == VLK_CONN_STATUS_SERIAL_PORT_DISCONNECTED)
     {
         m_deviceConnected = false;
         m_hasTelemetry = false;
+        m_turnToMotorOn = false;
+        m_turnToStatusRefreshPending = false;
         qDebug() << "Serial port Gimbal disconnected !!!";
         ui->btnConnctSerialPort->setText(tr("Connect"));
+        ui->lbTurnToConnection->setText(tr("Not connected"));
+        ui->lbMotorStatus->setText(tr("Unknown"));
+        ui->lbFollowStatus->setText(tr("Unknown"));
     }
     else
     {
         qCritical() << "unknown connection status: " << iConnStatus;
     }
-    updateTurnToDeviceStatus();
 }
 
 void Widget::onSlotDeviceModel(VLK_DEV_MODEL model)
@@ -369,6 +396,12 @@ void Widget::onSlotDeviceTelemetry(VLK_DEV_TELEMETRY telemetry)
     m_latestTelemetry = telemetry;
     m_hasTelemetry = true;
     m_lastTelemetryTimer.start();
+
+    if (m_turnToStatusRefreshPending) {
+        m_turnToStatusRefreshPending = false;
+        QTimer::singleShot(kTurnToPostTelemetryStatusDelayMs,
+            this, SLOT(refreshTurnToDeviceStatusAfterConnect()));
+    }
 
     if (m_turnToActive) {
         m_turnToTelemetryReceived = true;
@@ -411,26 +444,32 @@ void Widget::appendTurnToStatus(const QString& message)
 
 void Widget::updateTurnToDeviceStatus()
 {
-    const bool connected = !!VLK_IsConnected();
-    m_deviceConnected = connected;
-    if (!!VLK_IsTCPConnected()) {
-        ui->lbTurnToConnection->setText(tr("TCP connected"));
-    } else if (!!VLK_IsSerialPortConnected()) {
-        ui->lbTurnToConnection->setText(tr("Serial connected"));
-    } else {
-        ui->lbTurnToConnection->setText(tr("Not connected"));
-    }
-
-    if (!connected) {
+    if (!m_deviceConnected) {
         m_turnToMotorOn = false;
+        ui->lbTurnToConnection->setText(tr("Not connected"));
         ui->lbMotorStatus->setText(tr("Unknown"));
         ui->lbFollowStatus->setText(tr("Unknown"));
+        return;
+    }
+
+    if (!hasFreshTelemetry()) {
+        m_turnToMotorOn = false;
+        ui->lbMotorStatus->setText(tr("Waiting for telemetry"));
+        ui->lbFollowStatus->setText(tr("Waiting for telemetry"));
         return;
     }
 
     m_turnToMotorOn = !!VLK_IsMotorOn();
     ui->lbMotorStatus->setText(m_turnToMotorOn ? tr("ON") : tr("OFF"));
     ui->lbFollowStatus->setText(!!VLK_IsFollowMode() ? tr("Enabled") : tr("Disabled"));
+}
+
+void Widget::refreshTurnToDeviceStatusAfterConnect()
+{
+    if (!m_deviceConnected || !hasFreshTelemetry()) {
+        return;
+    }
+    updateTurnToDeviceStatus();
 }
 
 void Widget::finishTurnToTest(const QString& result)
@@ -477,6 +516,14 @@ void Widget::on_btnTurnTo_clicked()
         appendTurnToStatus(tr("Not connected: VLK_TurnTo was not called."));
         QMessageBox::warning(this, tr("Turn To unavailable"),
             tr("Connect the gimbal over TCP or serial before testing Turn To."));
+        return;
+    }
+
+    if (!hasFreshTelemetry()) {
+        ui->lbTurnToResult->setText(tr("No telemetry"));
+        appendTurnToStatus(tr("No fresh telemetry: VLK_TurnTo was not called."));
+        QMessageBox::warning(this, tr("Turn To unavailable"),
+            tr("Wait for current yaw/pitch telemetry before testing Turn To."));
         return;
     }
 
@@ -545,6 +592,12 @@ void Widget::on_btnMotorOn_clicked()
             tr("Connect the gimbal before changing motor state."));
         return;
     }
+    if (!hasFreshTelemetry()) {
+        appendTurnToStatus(tr("No fresh telemetry: motor ON command was not sent."));
+        QMessageBox::warning(this, tr("Motor control unavailable"),
+            tr("Wait for telemetry before changing motor state."));
+        return;
+    }
     VLK_SwitchMotor(1);
     appendTurnToStatus(tr("Motor ON command sent; verify the refreshed status."));
     updateTurnToDeviceStatus();
@@ -557,6 +610,12 @@ void Widget::on_btnMotorOff_clicked()
         appendTurnToStatus(tr("Not connected: motor OFF command was not sent."));
         QMessageBox::warning(this, tr("Motor control unavailable"),
             tr("Connect the gimbal before changing motor state."));
+        return;
+    }
+    if (!hasFreshTelemetry()) {
+        appendTurnToStatus(tr("No fresh telemetry: motor OFF command was not sent."));
+        QMessageBox::warning(this, tr("Motor control unavailable"),
+            tr("Wait for telemetry before changing motor state."));
         return;
     }
     if (m_turnToActive) {

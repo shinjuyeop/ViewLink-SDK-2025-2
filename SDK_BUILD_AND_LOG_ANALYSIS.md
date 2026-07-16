@@ -129,7 +129,7 @@ debug:[ViewLink.cpp][277][VLK_RegisterDevStatusCB]VLK_RegisterDevStatusCB
 
 따라서 `VLKLog` 폴더의 로그는 SDK 내부에서 발생한다. 애플리케이션은 Qt 메시지 핸들러를 등록해 이 파일에 쓰지 않는다.
 
-실행 점검에서는 `VLK_IsConnected()`와 `VLK_IsSerialPortConnected()` 같은 상태 조회도 매 호출마다 SDK debug 로그를 발생시키는 것이 관찰됐다. 따라서 새 진단 UI는 유휴 상태에서 상태 API를 계속 polling하지 않는다. 연결 이벤트와 사용자 동작 때 갱신하고, Turn To 감시 중에만 장비 상태를 최대 1초에 한 번 재확인한다. 이는 SDK 로그 정책을 변경하지 않으면서 불필요한 로그 증가를 줄인다.
+실행 점검에서는 `VLK_IsConnected()`와 `VLK_IsSerialPortConnected()` 같은 상태 조회도 매 호출마다 SDK debug 로그를 발생시키는 것이 관찰됐다. 따라서 새 진단 UI는 유휴 상태에서 상태 API를 계속 polling하지 않는다. 연결 callback에서는 callback 값만으로 UI를 갱신하고 SDK 상태 API를 재호출하지 않는다. 첫 telemetry를 UI thread에서 받은 뒤 500 ms를 더 기다리고 motor/follow 상태를 조회하며, Turn To 감시 중에만 장비 상태를 최대 1초에 한 번 재확인한다. 이는 callback 재진입 위험과 불필요한 로그 증가를 함께 줄인다.
 
 공개 헤더에서 로그 레벨, 로그 모드, 로그 비활성화를 제어하는 API는 발견되지 않았다. DLL 내부 문자열만 근거로 비공개 함수를 호출하거나 DLL을 수정하면 안 된다.
 
@@ -177,7 +177,9 @@ Qt 데모에 기존 `VLK_Move`, Home, Zoom, EO/IR 스트리밍·녹화 코드는
 - 입력: yaw `-180.00..180.00`, pitch `-90.00..90.00`
 - 사전 확인: 연결, motor ON, 범위 재검증
 - Motor ON/OFF는 별도 명시적 버튼이며 Turn To가 자동으로 motor를 켜지 않음
-- telemetry 판정은 200 ms 간격으로 수행하고, 연결/motor/Follow 상태 API는 SDK 로그 증가를 줄이기 위해 연결 이벤트·사용자 동작 및 명령 수행 중 최대 1초 간격으로 갱신. Follow mode는 변경하지 않음
+- SDK callback에서 전달된 signal은 명시적인 Qt queued connection으로 UI thread에서 처리
+- 연결 callback에서는 SDK 상태 API를 호출하지 않고, 첫 telemetry 이후 500 ms 지연한 다음 motor/Follow 상태 조회
+- telemetry 판정은 200 ms 간격으로 수행하고, 명령 수행 중 motor/Follow 상태 API는 최대 1초 간격으로 갱신. Follow mode는 변경하지 않음
 - 허용 오차: yaw/pitch 각각 1.0도
 - yaw 오차는 `-180/180` wrap-around를 고려
 - 목표 범위에 들어온 뒤 1초간 유지되면 `Target reached`

@@ -93,6 +93,8 @@ private slots:
 
     void onTurnToMonitorTimeout();
 
+    void refreshTurnToDeviceStatusAfterConnect();
+
 private:
     // initialize UI control
     void InitUI();
@@ -133,6 +135,7 @@ private:
     QElapsedTimer m_turnToElapsedTimer;
     bool m_turnToActive;
     bool m_turnToMotorOn;
+    bool m_turnToStatusRefreshPending;
     bool m_turnToBeforeTelemetryAvailable;
     bool m_turnToTelemetryReceived;
     bool m_turnToYawMoved;
