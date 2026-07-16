@@ -86,7 +86,7 @@ private slots:
 private:
     // initialize UI control
     void InitUI();
-	void appendSrtTelemetry();
+	void appendSrtTelemetry(bool finalizePartialFrame = false);
 	void stopRecording(const QString& reasonCode, const QString& warningMessage = QString());
     void writeRecordMetadata();
 

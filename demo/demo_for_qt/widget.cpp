@@ -12,6 +12,37 @@
 #include <QSaveFile>
 #include <QStringList>
 #include <QTimer>
+#include <cmath>
+
+namespace {
+const qint64 kSrtFrameRate = 30;
+
+QString formatDmsCoordinate(double coordinate, bool latitude)
+{
+    const QChar positiveHemisphere = latitude ? QChar('N') : QChar('E');
+    const QChar negativeHemisphere = latitude ? QChar('S') : QChar('W');
+    const QChar hemisphere = coordinate < 0.0
+        ? negativeHemisphere
+        : positiveHemisphere;
+
+    // Round the complete coordinate so a value such as 59.999 seconds
+    // correctly carries into the next minute or degree.
+    const qint64 totalHundredths = qRound64(std::fabs(coordinate) * 360000.0);
+    const qint64 degrees = totalHundredths / 360000;
+    const qint64 minuteRemainder = totalHundredths % 360000;
+    const qint64 minutes = minuteRemainder / 6000;
+    const double seconds = (minuteRemainder % 6000) / 100.0;
+
+    return QString("%1 %2%3%4%5%6%7")
+        .arg(hemisphere)
+        .arg(degrees)
+        .arg(QChar(0x00b0))
+        .arg(minutes)
+        .arg(QChar(0x2032))
+        .arg(seconds, 0, 'f', 2)
+        .arg(QChar(0x2033));
+}
+}
 
 Widget::Widget(QWidget *parent) :
     QWidget(parent),
@@ -33,6 +64,7 @@ Widget::Widget(QWidget *parent) :
     connect(this, SIGNAL(SignalDeviceConfig(VLK_DEV_CONFIG)), this, SLOT(onSlotDeviceConfig(VLK_DEV_CONFIG)));
     connect(this, SIGNAL(SignalDeviceTelemetry(VLK_DEV_TELEMETRY)), this, SLOT(onSlotDeviceTelemetry(VLK_DEV_TELEMETRY)));
     connect(&m_srtTimer, SIGNAL(timeout()), this, SLOT(writeSrtTelemetry()));
+    m_srtTimer.setTimerType(Qt::PreciseTimer);
 
     InitUI();
 
@@ -340,18 +372,13 @@ void Widget::writeSrtTelemetry()
 	appendSrtTelemetry();
 }
 
-void Widget::appendSrtTelemetry()
+void Widget::appendSrtTelemetry(bool finalizePartialFrame)
 {
 	if (!m_bIsRecording || !m_recordElapsedTimer.isValid()) {
 		return;
 	}
 
-    const qint64 elapsedMs = m_previousSrtMs;
-    const qint64 elapsedEndMs = m_recordElapsedTimer.elapsed();
-    if (elapsedEndMs <= elapsedMs) {
-        return;
-    }
-    m_previousSrtMs = elapsedEndMs;
+    const qint64 recordingElapsedMs = m_recordElapsedTimer.elapsed();
     const auto formatSrtTime = [](qint64 value) {
         return QString("%1:%2:%3,%4")
             .arg(value / 3600000, 2, 10, QChar('0'))
@@ -367,34 +394,71 @@ void Widget::appendSrtTelemetry()
 
     QString telemetryText;
     if (telemetryFresh) {
+        const double irZoom = m_latestTelemetry.iIRDigitalZoom > 0
+            ? static_cast<double>(m_latestTelemetry.iIRDigitalZoom)
+            : 1.0;
         telemetryText = QString(
-            "Drone GPS: %1, %2 (Alt: %3m)\n"
-            "Gimbal Yaw: %4, Pitch: %5")
-            .arg(m_latestTelemetry.dDroneLat, 0, 'f', 7)
-            .arg(m_latestTelemetry.dDroneLng, 0, 'f', 7)
-            .arg(m_latestTelemetry.dDroneAlt, 0, 'f', 1)
-            .arg(m_latestTelemetry.dYaw, 0, 'f', 1)
-            .arg(m_latestTelemetry.dPitch, 0, 'f', 1);
+            "ACFT %1 ACFT %2 ACFT ALT  %3m\n"
+            "TAG %4 TAG %5 TAG ALT  %6m\n"
+            "EO %7x  FOV %8%9  IR %10x  LRF %11m\n"
+            "Plat: p  ACFT: pitch  %12  yaw  %13  roll  %14")
+            .arg(formatDmsCoordinate(m_latestTelemetry.dDroneLat, true))
+            .arg(formatDmsCoordinate(m_latestTelemetry.dDroneLng, false))
+            .arg(m_latestTelemetry.dDroneAlt, 0, 'f', 3)
+            .arg(formatDmsCoordinate(m_latestTelemetry.dTargetLat, true))
+            .arg(formatDmsCoordinate(m_latestTelemetry.dTargetLng, false))
+            .arg(m_latestTelemetry.dTargetAlt, 0, 'f', 3)
+            .arg(m_latestTelemetry.dZoomMagTimes, 0, 'f', 1)
+            .arg(m_latestTelemetry.dFov, 0, 'f', 1)
+            .arg(QChar(0x00b0))
+            .arg(irZoom, 0, 'f', 1)
+            .arg(static_cast<double>(m_latestTelemetry.sLaserDistance), 0, 'f', 1)
+            .arg(m_latestTelemetry.dPitch, 0, 'f', 2)
+            .arg(m_latestTelemetry.dYaw, 0, 'f', 2)
+            .arg(m_latestTelemetry.dRoll, 0, 'f', 2);
     } else {
-        const QString status = m_deviceConnected ? "stale or unavailable" : "disconnected";
-        telemetryText = QString("Drone GPS: N/A\nTelemetry: %1").arg(status);
+        telemetryText = QString(
+            "ACFT N/A ACFT N/A ACFT ALT  N/A\n"
+            "TAG N/A TAG N/A TAG ALT  N/A\n"
+            "EO N/A  FOV N/A  IR N/A  LRF N/A\n"
+            "Plat: p  ACFT: pitch  N/A  yaw  N/A  roll  N/A");
     }
 
-    const QString srtBlock = QString("%1\n%2 --> %3\n%4\n\n")
-        .arg(m_srtIndex)
-        .arg(formatSrtTime(elapsedMs))
-        .arg(formatSrtTime(elapsedEndMs))
-        .arg(telemetryText);
+    const auto writeBlock = [&](qint64 startMs, qint64 endMs) {
+        const QString srtBlock = QString("%1\n%2 --> %3\n%4\n\n")
+            .arg(m_srtIndex)
+            .arg(formatSrtTime(startMs))
+            .arg(formatSrtTime(endMs))
+            .arg(telemetryText);
+
+        if (m_srtFileEO.isOpen()) {
+            m_srtFileEO.write(srtBlock.toUtf8());
+        }
+        if (m_srtFileIR.isOpen()) {
+            m_srtFileIR.write(srtBlock.toUtf8());
+        }
+        m_previousSrtMs = endMs;
+        ++m_srtIndex;
+    };
+
+    // Produce the same 33/33/34 ms cadence as a 30 fps recording. If the UI
+    // timer is delayed, write every missing interval so the SRT stays contiguous.
+    qint64 nextFrameEndMs = (static_cast<qint64>(m_srtIndex) * 1000) / kSrtFrameRate;
+    while (nextFrameEndMs <= recordingElapsedMs) {
+        writeBlock(m_previousSrtMs, nextFrameEndMs);
+        nextFrameEndMs = (static_cast<qint64>(m_srtIndex) * 1000) / kSrtFrameRate;
+    }
+
+    if (finalizePartialFrame && recordingElapsedMs > m_previousSrtMs) {
+        writeBlock(m_previousSrtMs, recordingElapsedMs);
+    }
 
     if (m_srtFileEO.isOpen()) {
-        m_srtFileEO.write(srtBlock.toUtf8());
         m_srtFileEO.flush();
     }
     if (m_srtFileIR.isOpen()) {
-        m_srtFileIR.write(srtBlock.toUtf8());
         m_srtFileIR.flush();
     }
-    ++m_srtIndex;
 }
 
 void Widget::on_btnOpenNetworkVideo_clicked()
@@ -635,7 +699,7 @@ void Widget::on_btnStartRecord_clicked()
     m_previousSrtMs = 0;
 	m_recordStopReason = "recording";
     m_bIsRecording = true;
-    m_srtTimer.start(1000);
+    m_srtTimer.start(33);
 
     ui->btnStartRecord->setText(tr("Recording..."));
     ui->btnStartRecord->setStyleSheet("QPushButton { color: red; font-weight: bold; }");
@@ -658,7 +722,7 @@ void Widget::stopRecording(const QString& reasonCode, const QString& warningMess
 	}
 
 	m_srtTimer.stop();
-	appendSrtTelemetry();
+	appendSrtTelemetry(true);
 	m_bIsRecording = false;
 	m_recordStopReason = reasonCode;
 
